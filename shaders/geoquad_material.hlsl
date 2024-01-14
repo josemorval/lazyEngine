@@ -31,7 +31,7 @@ GS_INPUT vs_main(VS_INPUT input)
 void gs_main(point GS_INPUT input[1], inout TriangleStream<PS_INPUT> OutputStream) {
 
     float size = particle_buffer[input[0].vertexID].time/particle_buffer[input[0].vertexID].lifetime;
-    size = 0.1*smoothstep(0.0,1.0,size)*smoothstep(1.0,0.0,size);
+    size  = 0.1*smoothstep(0.0,1.0,size)*smoothstep(1.0,0.0,size);
     float squareSize = size;
     float4 vertices[4];
     vertices[0] = float4(-squareSize, -squareSize, 0.0, 1.0);

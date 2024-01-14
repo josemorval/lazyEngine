@@ -1364,7 +1364,6 @@ namespace lib3d
     954, 955, 956,
     957, 958, 959 };
 
-
     static int WIDTH = 0;
     static int HEIGHT = 0;
 
@@ -1444,9 +1443,12 @@ namespace lib3d
 
         void release()
         {
-            rendertarget->Release();
             dsv->Release();
+            dsv = nullptr;
             srv->Release();
+            srv = nullptr;
+            rendertarget->Release();
+            rendertarget = nullptr;
         }
     };
     struct RenderTarget2D
@@ -1520,10 +1522,14 @@ namespace lib3d
 
         void release()
         {
-            rendertarget->Release();
             rtv->Release();
+            rtv = nullptr;
             srv->Release();
+            srv = nullptr;
             uav->Release();
+            uav = nullptr;
+            rendertarget->Release();
+            rendertarget = nullptr;
         }
 
     };
@@ -1587,10 +1593,15 @@ namespace lib3d
 
         void release()
         {
-            rendertarget->Release();
             rtv->Release();
+            rtv = nullptr;
             srv->Release();
+            srv = nullptr;
             uav->Release();
+            uav = nullptr;
+            rendertarget->Release();
+            rendertarget = nullptr;
+
         }
 
     };
@@ -1666,9 +1677,12 @@ namespace lib3d
 
         void release()
         {
-            buffer->Release();
             srv->Release();
+            srv = nullptr;
             uav->Release();
+            uav = nullptr;
+            buffer->Release();
+            buffer = nullptr;
         }
     };
     struct ConstantBuffer {
@@ -1726,6 +1740,7 @@ namespace lib3d
         void release()
         {
             buffer->Release();
+            buffer = nullptr;
         }
 
     };
@@ -1880,8 +1895,10 @@ namespace lib3d
         void release()
         {
             vs->Release();
-            if(use_geo_shader) gs->Release();
+            vs = nullptr;
+            if (use_geo_shader) gs->Release(), gs = nullptr;
             ps->Release();
+            ps = nullptr;
         }
     };
     struct ComputeFX
@@ -1949,6 +1966,7 @@ namespace lib3d
         void release()
         {
             cs->Release();
+            cs = nullptr;
         }
 
     };
@@ -2103,14 +2121,16 @@ namespace lib3d
         void release()
         {
             vertex_buffer->Release();
+            vertex_buffer = nullptr;
             index_buffer->Release();
+            index_buffer = nullptr; 
         }
     };
 
         void setup_device(HINSTANCE handle_instance)
         {
             
-            WIDTH = 1280; HEIGHT = 720;
+            WIDTH = 960; HEIGHT = 540;
             
             /*
             static int swap_chain_desc[] = {
@@ -2146,33 +2166,20 @@ namespace lib3d
             wc.lpfnWndProc = DefWindowProc; 
             wc.hbrBackground = CreateSolidBrush(RGB(0, 0, 0));
             wc.hIcon = hIcon;
-
             RegisterClass(&wc);
 
 
             // Creación de la ventana
             window = CreateWindowA("custom_class","lazy[E]ngine", WS_OVERLAPPEDWINDOW | WS_VISIBLE,0, 0,WIDTH, HEIGHT, 0,0,handle_instance,0);
             //window = CreateWindowA("edit", "lazy[E]ngine", WS_OVERLAPPED, 0, 0, WIDTH, HEIGHT, 0, 0, handle_instance, 0);
-            //ShowWindow(window, SW_SHOW);
-            //UpdateWindow(window);
 
             //Block resize window
             SetWindowLong(window, GWL_STYLE, GetWindowLong(window, GWL_STYLE) & ~WS_THICKFRAME);
             SetWindowPos(window, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 
-            //window = CreateWindowA("edit", 0, WS_POPUP | WS_VISIBLE | WS_MAXIMIZE, 0, 0, WIDTH, HEIGHT, 0, 0, 0, 0);
             ShowCursor(false);
             swap_chain_desc.OutputWindow = window;
             D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, D3D11_CREATE_DEVICE_DEBUG, 0, 0, D3D11_SDK_VERSION, (DXGI_SWAP_CHAIN_DESC*)&swap_chain_desc, &swapchain, &device, NULL, &inmediate);
-
-            //Get window dimensions. We could set another dim in the future
-            /*
-            RECT desktop_rect;
-            GetClientRect(window, &desktop_rect);
-            
-            WIDTH = desktop_rect.right;
-            HEIGHT = desktop_rect.bottom;
-            */
 
             //Here we define a common vertex layout for all meshes. Only accepted position (3f), texcoord (2f) and normal (3f)
             //It is possible to extend for other (maybe more general) layouts.
@@ -2277,6 +2284,6 @@ namespace lib3d
     {
         QueryPerformanceCounter(&li_timerend);
         double duration = (float)(li_timerend.QuadPart - li_timerstart.QuadPart) / static_cast<double>(li_timerfrequency.QuadPart);
-        global_time_use = (duration * 1000)*0.5 + global_time_use*0.5;
+        global_time_use = (duration * 1000);
     }
 }

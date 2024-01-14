@@ -28,14 +28,14 @@ VS_OUTPUT vs_main(VS_INPUT i)
     
     o.world_normal = i.normal;
     o.texcoord = i.texcoord;
-    o.local_position = i.position;
+    o.local_position = mul(scale_matrix[i.instanceid],float4(i.position,1.0)).xyz;
 
     return o;
 }
 
 float4 ps_main(VS_OUTPUT i) : SV_TARGET
 {
-    float scale = 2.0;
+    float scale = 5.0;
     float bnwc = compute_direct_lighting(i.world_position, i.world_normal, light_shadowmap_texture, linear_wrap_sampler).r;
     bnwc = 1.0;
     float3 lp = i.local_position*1.001;

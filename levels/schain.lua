@@ -12,7 +12,7 @@ function init()
         lightdir = Vector.new(-1.0,-1.0,-1.0),
     
         use = function(self)
-            self.eye = Vector.new(4.0*math.cos(0.2*global_t),2.0,4.0*math.sin(0.2*global_t))
+            self.eye = Vector.new(2.0,2.0,3.0)
             self.dir = Vector.mul(-1.0,Vector.normalize(self.eye))
             self.eye.y = self.eye.y - 1.0
 
@@ -27,17 +27,13 @@ function init()
         end
     }
 
-    shadowmap_texture = create_renderdepth2D(screenx,screeny)
     standard_material = create_fx("./shaders/standard.hlsl", false)
-    standardshadow_material = create_fx("./shaders/standard_shadow.hlsl", false)    
-    geoquad_material = create_fx("./shaders/geoquad_material.hlsl", true)    
+    billboard_material = create_fx("./shaders/schain/billboard.hlsl", false)
 
-    gpuparticle_init = create_computefx("./shaders/compute_particle.cs", "init")
-    gpuparticle_udpate = create_computefx("./shaders/compute_particle.cs", "update")
-    
-    number_particles = 500
-    number_particles_drawing = 500
+    gpuparticle_init = create_computefx("./shaders/schain/compute_particle.cs", "init")
+    gpuparticle_udpate = create_computefx("./shaders/schain/compute_particle.cs", "update")
 
+    number_particles = 5
     gpuparticle_buffer = create_buffer(number_particles,36)
 
     attach_uav_buffer(gpuparticle_buffer,2)
@@ -47,22 +43,6 @@ function init()
 end
   
 function imgui() 
-    imgui_setnextwindowsize(400,100)
-    imgui_begin("GPU particles")
-        local _newvalue = imgui_sliderint("Simulating particles",number_particles,500,1000000)
-        if _newvalue ~= number_particles then
-            number_particles = _newvalue
-            destroy_buffer(gpuparticle_buffer)
-            gpuparticle_buffer = create_buffer(number_particles,36)
-            attach_uav_buffer(gpuparticle_buffer,2)
-            use_computefx(gpuparticle_init)
-            dispatch_computefx(gpuparticle_init,math.ceil(number_particles/64),1,1)
-            clean_uav(2)  
-        end
-        number_particles_drawing = imgui_sliderint("Drawing particles",number_particles_drawing,500,1000000)
-
-    imgui_end()
-
 end  
 
 function render()
@@ -71,20 +51,16 @@ function render()
 
     use_computefx(gpuparticle_udpate)
     attach_uav_buffer(gpuparticle_buffer,2)
-      dispatch_computefx(gpuparticle_udpate,math.ceil(number_particles/64),1,1)
+    for i=1,20 do
+    dispatch_computefx(gpuparticle_udpate,math.ceil(number_particles/64),1,1)
+    end
     clean_uav(2)
 
     main_camera:use()
 
-    render_scene()
-end
-
-function render_scene()    
-
     use_viewport(0,0,screenx,screeny)
-
-    clear_depth_renderdepth2D(shadowmap_texture)
-    set_depth_renderdepth2D(shadowmap_texture)
+    use_rasterizer()
+    use_write_depthstencil()
 
     clear_rendertarget_backbuffer(0.1,0.1,0.1,1.0)
     clear_depth_depthmain()
@@ -94,19 +70,17 @@ function render_scene()
     set_rotation_transform(0,0.0,1.0,0.0,0.0)
     set_scale_transform(0,2.0,0.2,2.0)
     update_transformbuffer()
-    
-    use_rasterizer()
-    use_write_depthstencil()
+
     use_cube()
     use_fx(standard_material)
     draw_instances_cube(1)
 
     use_nocull_rasterizer()
     attach_srv_buffer(gpuparticle_buffer,2)
-    use_fx(geoquad_material)
-    emit_vertex(number_particles_drawing,1)
+    use_fx(billboard_material)
+    use_quad()
+    draw_instances_quad(number_particles)
     clean_srv(2)
-
 end
 
 

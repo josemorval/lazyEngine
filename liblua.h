@@ -33,16 +33,14 @@ extern "C" {
 
 namespace liblua
 {
-    FILETIME last_write_time;
-    HANDLE file;
+    lua_State* lstate;
     bool has_lua_error = false;
     std::string lua_error_log;
     std::string lua_softerrors_log;
-    lua_State* lstate;
-    float time_since_last_check = 0.0;
-    const float max_time_check = 3.0;
     std::string list_lua_bindings = "";
     std::string lua_filename_level;
+    std::string folder_path = "./levels"; 
+    FILETIME last_folder_write_time;
 
     void push_functions();
 
@@ -113,14 +111,49 @@ namespace liblua
         }
     }
 
+
+    bool check_folder_changes()
+    {
+        WIN32_FIND_DATA findFileData;
+        HANDLE hFind = FindFirstFile((folder_path + "\\*").c_str(), &findFileData);
+
+        if (hFind == INVALID_HANDLE_VALUE)
+        {
+            return false;
+        }
+
+        do
+        {
+            if (!(findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+            {
+                std::string filename = folder_path + "\\" + findFileData.cFileName;
+
+                HANDLE file = CreateFile(filename.c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
+                    OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+                FILETIME file_write_time;
+                GetFileTime(file, NULL, NULL, &file_write_time);
+
+                // Compara la fecha de modificación del archivo con la última fecha de modificación de la carpeta
+                if (CompareFileTime(&file_write_time, &last_folder_write_time) > 0)
+                {
+                    // Ha habido cambios en la carpeta, realiza las operaciones necesarias
+                    std::cout << "Se detectaron cambios en la carpeta.\n";
+                    // Puedes agregar aquí la lógica adicional que necesites
+                    last_folder_write_time = file_write_time;
+                    return true;
+                }
+
+                CloseHandle(file);
+            }
+        } while (FindNextFile(hFind, &findFileData) != 0);
+
+        FindClose(hFind);
+        return false;
+    }
+
     void load_new_level()
     {
-        file = CreateFile(lua_filename_level.c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
-            OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL
-        );
-
-        GetFileTime(file, NULL, NULL, &last_write_time);
-
         has_lua_error = false;
         lua_error_log = "";
         if (luaL_dofile(lstate, lua_filename_level.c_str()))
@@ -141,13 +174,9 @@ namespace liblua
         luaL_openlibs(lstate);
         push_functions();
 
+        GetSystemTimeAsFileTime(&last_folder_write_time);
+
         lua_filename_level = "./levels/main.lua";
-
-        file = CreateFile(lua_filename_level.c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
-            OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL
-        );
-
-        GetFileTime(file, NULL, NULL, &last_write_time);
 
         has_lua_error = false;
         lua_error_log = "";
@@ -164,10 +193,8 @@ namespace liblua
     void check_lua_changes()
     {
         lua_softerrors_log = "";
-        FILETIME currentWriteTime;
-        GetFileTime(file, NULL, NULL, &currentWriteTime);
 
-        if (CompareFileTime(&last_write_time, &currentWriteTime) != 0)
+        if (check_folder_changes())
         {
             lua_gc(lstate, LUA_GCCOLLECT, 0);
 
@@ -183,8 +210,6 @@ namespace liblua
             }
 
             init();
-
-            last_write_time = currentWriteTime;
         }
     }
 
@@ -194,10 +219,20 @@ namespace liblua
 
     static int imgui_begin(lua_State* L)
     {
-        const char* name = lua_tostring(L, 1);
-        bool result = ImGui::Begin(name);
-        lua_pushboolean(L, result);
-        return 1;
+        const char* _label = lua_tostring(L, 1);
+        if (_label == nullptr || lua_isnoneornil(L, 1))
+        {
+            UPDATE_SOFTERROR
+            bool result = ImGui::Begin("undefined");
+            lua_pushboolean(L, result);
+            return 1;
+        }
+        else
+        {
+            bool result = ImGui::Begin(_label);
+            lua_pushboolean(L, result);
+            return 1;
+        }
     }
 
     static int imgui_end(lua_State* L)

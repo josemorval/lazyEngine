@@ -9,6 +9,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{0F3C6429-8E84-4465-A710-96A8BED24C25}</ProjectGuid>
     <ProjectName>lazyengine</ProjectName>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -27,8 +28,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\Debug\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\Debug\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\release</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\release</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkIncremental>
     <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(DXSDK_DIR)include;$(IncludePath)</IncludePath>
     <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(DXSDK_DIR)Lib\x86;$(LibraryPath)</LibraryPath>
@@ -52,9 +53,12 @@
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AssemblerListingLocation>.\Debug/</AssemblerListingLocation>
-      <ObjectFileName>.\Debug/</ObjectFileName>
-      <ProgramDataBaseFileName>.\Debug/</ProgramDataBaseFileName>
+      <AssemblerListingLocation>
+      </AssemblerListingLocation>
+      <ObjectFileName>
+      </ObjectFileName>
+      <ProgramDataBaseFileName>
+      </ProgramDataBaseFileName>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -78,8 +82,8 @@
       <AdditionalDependencies>d3dcompiler.lib;comctl32.lib;d3d11.lib;winmm.lib;windowsapp.lib;strmiids.lib;./lua/lua54.lib;comdlg32.lib</AdditionalDependencies>
       <OutputFile>$(TargetPath)</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
-      <ProgramDatabaseFile>.\Debug/TinyDX11.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>
+      </ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
@@ -95,7 +99,7 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /E /I /Y "$(ProjectDir)shaders" "$(TargetDir)shaders" &amp;&amp; xcopy /Y "$(ProjectDir)*.lua" "$(TargetDir)"</Command>
+      <Command>xcopy /E /I /Y "$(ProjectDir)shaders" "$(TargetDir)shaders" &amp;&amp; xcopy /E /I /Y  "$(ProjectDir)levels" "$(TargetDir)levels"  &amp;&amp; xcopy /E /I /Y  "$(ProjectDir)fonts" "$(TargetDir)fonts"  &amp;&amp; xcopy /Y  "$(ProjectDir)lazy.code-workspace" "$(TargetDir)lazy.code-workspace"  </Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>python ./luabindings.py</Command>
@@ -131,7 +135,6 @@
     <ClInclude Include="libmath.h" />
     <ClInclude Include="libmidi.h" />
     <ClInclude Include="luabindings_generated.h" />
-    <ClInclude Include="meshdata.h" />
     <ClInclude Include="vars.h" />
   </ItemGroup>
   <ItemGroup>

@@ -18,11 +18,11 @@ namespace libimgui
     {
 		ImGui::CreateContext();
 		ImGuiIO& io = ImGui::GetIO();
-		io.Fonts->AddFontFromFileTTF("Roboto-Medium.ttf", 10.0);
+		io.Fonts->AddFontFromFileTTF("./fonts/Roboto-Medium.ttf", 10.0);
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
 		io.MouseDrawCursor = true;
-		io.FontGlobalScale = 1.5;
+		io.FontGlobalScale = 2.0;
 
 		//imgui style definition
 		{
@@ -171,4 +171,28 @@ namespace libimgui
         lib3d::device->CreateSamplerState(&desc, &pSamplerState);
         lib3d::inmediate->PSSetSamplers(0, 1, &pSamplerState);
     }
+
+	void draw_shader_error_square()
+	{
+		ImDrawList* drawList = ImGui::GetBackgroundDrawList();
+
+		float alpha = sin(5.0*ImGui::GetTime()) * 0.5f + 0.5f; 
+		alpha *= 1.0;
+		ImVec2 squarePos = ImVec2(lib3d::WIDTH  - 20, 40);
+		ImVec2 squareSize = ImVec2(10, 10);
+
+		drawList->AddRectFilled(squarePos, ImVec2(squarePos.x + squareSize.x, squarePos.y + squareSize.y), IM_COL32(255, 0, 0, (int)(alpha * 255)));
+	}
+
+	void draw_lua_error_square()
+	{
+		ImDrawList* drawList = ImGui::GetBackgroundDrawList();
+
+		float alpha = sin(5.0 * ImGui::GetTime()) * 0.5f + 0.5f;
+		alpha *= 1.0;
+		ImVec2 squarePos = ImVec2(lib3d::WIDTH - 40, 40);
+		ImVec2 squareSize = ImVec2(10, 10);
+
+		drawList->AddRectFilled(squarePos, ImVec2(squarePos.x + squareSize.x, squarePos.y + squareSize.y), IM_COL32(100, 0, 255, (int)(alpha * 255)));
+	}
 }

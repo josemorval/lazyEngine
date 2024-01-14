@@ -5,8 +5,6 @@
 #include "libmath.h"
 #include "libmidi.h"
 #include "liblua.h"
-#include "meshdata.h"
-
 
 extern "C" int _fltused = 0;
 
@@ -104,13 +102,23 @@ int WinMain(HINSTANCE handle_instance, HINSTANCE handle_previnstance, LPSTR lpsz
 			if (lib3d::window == GetForegroundWindow() && !lib3d::is_focused) lib3d::is_focused = true;//lib3d::swapchain->SetFullscreenState(true, nullptr);
 			if (lib3d::window != GetForegroundWindow() && lib3d::is_focused) lib3d::is_focused = false;
 
+
+			if (lib3d::is_focused)
+			{	
+				if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) 
+				{
+					ExitProcess(0);
+				}
+			}
+
 			TranslateMessage(&msg);
 			DispatchMessageA(&msg);
 		}
 		
-
 		liblua::check_lua_changes();
 
+		bool shader_failed = false;
+		bool lua_failed = false;
 
 		//imgui logic
 		{
@@ -136,7 +144,7 @@ int WinMain(HINSTANCE handle_instance, HINSTANCE handle_previnstance, LPSTR lpsz
 					ImGui::MenuItem("Lua reference", nullptr, &show_lua_reference_window);
 				ImGui::EndMenu();
 				}
-				ImGui::SameLine(lib3d::WIDTH/2.0 - ImGui::CalcTextSize("aaaaaaaaaaaaa").x/2.0); // Ajusta la posición X según tus necesidades
+				ImGui::SameLine(lib3d::WIDTH/2.0 - ImGui::CalcTextSize("____________________").x/2.0); // Ajusta la posición X según tus necesidades
 				ImGui::Text("[ %.2f ms ] %d x %d",lib3d::global_time_use, lib3d::WIDTH, lib3d::HEIGHT);
 
 				ImGui::EndMainMenuBar();
@@ -180,6 +188,50 @@ int WinMain(HINSTANCE handle_instance, HINSTANCE handle_previnstance, LPSTR lpsz
 				ImGui::End();
 			}
 
+
+			if (liblua::lua_softerrors_log != "" || liblua::lua_error_log != "")
+			{
+				lua_failed = true;
+				libimgui::draw_lua_error_square();
+			}
+			
+			{
+				for (int i = 0; i < MAX_LIST_SIZE; i++)
+				{
+					if (lib3d::fx_list[i] != nullptr)
+					{
+						if (lib3d::fx_list[i]->error_vertex_shader != "")
+						{
+							shader_failed = true;
+							break;
+						}
+						if (lib3d::fx_list[i]->error_pixel_shader != "")
+						{
+							shader_failed = true;
+							break;
+						}
+						if (lib3d::fx_list[i]->error_geometry_shader != "")
+						{
+							shader_failed = true;
+							break;
+						}
+					}
+
+					if (lib3d::computefx_list[i] != nullptr)
+					{
+						if (lib3d::computefx_list[i]->error_compute_shader != "")
+						{
+							shader_failed = true;
+							break;
+						}
+					}
+				}
+				if (shader_failed)
+				{
+					libimgui::draw_shader_error_square();
+				}
+			}
+
 			ImGui::Render();
 		}
 		
@@ -188,8 +240,7 @@ int WinMain(HINSTANCE handle_instance, HINSTANCE handle_previnstance, LPSTR lpsz
 		//Lua based render
 		liblua::render();
 
-		viewport->set(0, 0, 1920,1080);
-		viewport->use();
+		if (lua_failed) rendertarget_main->clear_rendertarget(BACKGROUND_COL);
 		rendertarget_main->set_rendertarget_and_depth(*depth_main);
 		
 		libimgui::end_frame();
@@ -203,7 +254,7 @@ int WinMain(HINSTANCE handle_instance, HINSTANCE handle_previnstance, LPSTR lpsz
 		lib3d::stop_global_timer();
 
 	} 
-	while (!GetAsyncKeyState(VK_ESCAPE) );
+	while (true);
 
 	ExitProcess(0);  // actually not needed in this setup, but may be smaller..
 }
