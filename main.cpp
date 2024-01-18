@@ -1,53 +1,79 @@
+#include "libmem.h"
+#include "lib3d.h"
 #include "vars.h"
 
+#ifdef _DEBUG
 #include "libimgui.h"
-#include "lib3d.h"
 #include "libmath.h"
 #include "libmidi.h"
 #include "liblua.h"
+#endif // _DEBUG
 
 extern "C" int _fltused = 0;
 
+#ifdef _DEBUG
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);	
+#endif
+
+#ifdef _DEBUG
 int WinMain(HINSTANCE handle_instance, HINSTANCE handle_previnstance, LPSTR lpsz_argument, int nfunster_stil)
+#else
+void WinMainCRTStartup()
+#endif
 {
-	libmidi::setup_device();
+#ifdef _DEBUG
 	lib3d::setup_device(handle_instance);
+#else
+	lib3d::setup_device(nullptr);
+#endif// DEBUG
+	
+#ifdef _DEBUG
+	libmidi::setup_device();
 	liblua::initialize_lua();
+#endif // _DEBUG
 
 	//Create a viewport
-	viewport = new lib3d::Viewport(lib3d::WIDTH, lib3d::HEIGHT);
+	allocation(viewport, lib3d::Viewport, lib3d::WIDTH, lib3d::HEIGHT);
 
 	//Create several rasterizers (one of them for wireframe)
-	rasterizer = new lib3d::Rasterizer();
-	rasterizer_nocull = new lib3d::Rasterizer(D3D11_FILL_SOLID, D3D11_CULL_NONE);
-	rasterizer_wireframe = new lib3d::Rasterizer(D3D11_FILL_WIREFRAME,D3D11_CULL_NONE);
+	allocation(rasterizer, lib3d::Rasterizer);
+	allocation(rasterizer_nocull, lib3d::Rasterizer, D3D11_FILL_SOLID, D3D11_CULL_NONE);
+	allocation(rasterizer_wireframe, lib3d::Rasterizer, D3D11_FILL_WIREFRAME, D3D11_CULL_NONE);
 
 	//Create a alpha blending mode 
-	alpha_blending = new lib3d::AlphaBlending();
+	allocation(alpha_blending, lib3d::AlphaBlending);
 
 	//Several depth stencil setups (write or not write to depth buffer)
-	nowrite_depthstencil = new lib3d::DepthStencil(true, D3D11_DEPTH_WRITE_MASK_ZERO, D3D11_COMPARISON_LESS_EQUAL);
-	write_depthstencil = new lib3d::DepthStencil(true, D3D11_DEPTH_WRITE_MASK_ALL, D3D11_COMPARISON_LESS_EQUAL);
+	allocation(nowrite_depthstencil, lib3d::DepthStencil, true, D3D11_DEPTH_WRITE_MASK_ZERO, D3D11_COMPARISON_LESS_EQUAL);
+	allocation(write_depthstencil, lib3d::DepthStencil, true, D3D11_DEPTH_WRITE_MASK_ALL, D3D11_COMPARISON_LESS_EQUAL);
 
 	//Here we take the reference for the backbuffer (to draw the things) and create a depth map
-	rendertarget_main = new lib3d::Backbuffer();
-	depth_main = new lib3d::RenderDepth2D(lib3d::WIDTH, lib3d::HEIGHT);
+	allocation(rendertarget_main, lib3d::RenderTarget2D);
+	rendertarget_main->get_backbuffer();
 
 	//A simple quad mesh
-	mesh_quad = new lib3d::Mesh(lib3d::quad_vertices, lib3d::quad_indices, sizeof(lib3d::quad_vertices), sizeof(lib3d::quad_indices));
-	mesh_cube = new lib3d::Mesh(lib3d::cube_vertices, lib3d::cube_indices, sizeof(lib3d::cube_vertices), sizeof(lib3d::cube_indices));
-	mesh_sphere = new lib3d::Mesh(lib3d::sphere_vertices, lib3d::sphere_indices, sizeof(lib3d::sphere_vertices), sizeof(lib3d::sphere_indices));
+	allocation(mesh_quad, lib3d::Mesh, lib3d::quad_vertices, lib3d::quad_indices, sizeof(lib3d::quad_vertices), sizeof(lib3d::quad_indices));
+	allocation(mesh_cube, lib3d::Mesh, lib3d::cube_vertices, lib3d::cube_indices, sizeof(lib3d::cube_vertices), sizeof(lib3d::cube_indices));
+
+#ifdef  _DEBUG
+	allocation(mesh_sphere, lib3d::Mesh, lib3d::sphere_vertices, lib3d::sphere_indices, sizeof(lib3d::sphere_vertices), sizeof(lib3d::sphere_indices));
+#endif //  _DEBUG
+
+#ifdef _DEBUG
+	//allocation(gpu_timer, lib3d::GPUTimer);
+#endif // DEBUG
+
 
 	//Constant buffer for store view and projection matrices and other thins
-	constantbuffer_main = new lib3d::ConstantBuffer(sizeof(GlobalConstantsBuffer));
-	transformbuffer_main = new lib3d::ConstantBuffer(sizeof(TransformBuffer));
-	customdatabuffer_main = new lib3d::ConstantBuffer(sizeof(CustomDataBuffer));
+	allocation(constantbuffer_main, lib3d::ConstantBuffer, sizeof(GlobalConstantsBuffer));
 
 	GlobalConstantsBuffer _gcb; gcb = &_gcb;
 	gcb->projection_matrix = compute_perspective_matrix(1.0, 1.0 * lib3d::WIDTH / lib3d::HEIGHT, 0.1f, 10.0f);
 	gcb->light_projection_matrix = compute_orthographic_matrix(5.0 * lib3d::WIDTH / lib3d::HEIGHT, 5.0, 0.1f, 10.0f);
 
+#ifdef _DEBUG
+	allocation(transformbuffer_main, lib3d::ConstantBuffer, sizeof(TransformBuffer));
+	allocation(customdatabuffer_main, lib3d::ConstantBuffer, sizeof(CustomDataBuffer));
 	TransformBuffer _tb; tb = &_tb;
 	for (int i = 0; i < 64; i++)
 	{
@@ -72,9 +98,12 @@ int WinMain(HINSTANCE handle_instance, HINSTANCE handle_previnstance, LPSTR lpsz
 		_cdbp->custom_data1 = cdb->custom_data1;
 		_cdbp->custom_data2 = cdb->custom_data2;
 	customdatabuffer_main->unmap();
+#endif
 
 	//Set global constant buffer
 	constantbuffer_main->attach(0);
+
+#ifdef _DEBUG
 	transformbuffer_main->attach(1);
 	customdatabuffer_main->attach(2);
 
@@ -86,22 +115,28 @@ int WinMain(HINSTANCE handle_instance, HINSTANCE handle_previnstance, LPSTR lpsz
 	bool show_lua_reference_window = false;
 
 	liblua::init();
+#endif // _DEBUG
 
 	do
-	{
+	{		
+#ifdef _DEBUG
 		lib3d::start_global_timer();
+#endif
+
 
 		MSG msg;
 		while (PeekMessageA(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
+
+#ifdef _DEBUG
 			if (ImGui_ImplWin32_WndProcHandler(lib3d::window, msg.message, msg.wParam, msg.lParam)) {
 				continue;
 			}
+#endif // _DEBUG
 
 			// Control focus app behaviour
 			if (lib3d::window == GetForegroundWindow() && !lib3d::is_focused) lib3d::is_focused = true;//lib3d::swapchain->SetFullscreenState(true, nullptr);
 			if (lib3d::window != GetForegroundWindow() && lib3d::is_focused) lib3d::is_focused = false;
-
 
 			if (lib3d::is_focused)
 			{	
@@ -114,7 +149,10 @@ int WinMain(HINSTANCE handle_instance, HINSTANCE handle_previnstance, LPSTR lpsz
 			TranslateMessage(&msg);
 			DispatchMessageA(&msg);
 		}
+
+
 		
+#ifdef _DEBUG
 		liblua::check_lua_changes();
 
 		bool shader_failed = false;
@@ -234,24 +272,32 @@ int WinMain(HINSTANCE handle_instance, HINSTANCE handle_previnstance, LPSTR lpsz
 
 			ImGui::Render();
 		}
-		
-		update_globalconstants();
 
+#endif // _DEBUG
+
+		update_globalconstants();
+		rendertarget_main->clear_rendertarget(BACKGROUND_COL);
+
+#ifdef _DEBUG
 		//Lua based render
 		liblua::render();
 
 		if (lua_failed) rendertarget_main->clear_rendertarget(BACKGROUND_COL);
-		rendertarget_main->set_rendertarget_and_depth(*depth_main);
-		
-		libimgui::end_frame();
+#endif
 
-		//	Vsync
+		rendertarget_main->set_rendertarget();
+
+#ifdef _DEBUG
+		libimgui::end_frame();
+#endif // _DEBUG
+
 		lib3d::swapchain->Present(1, 0);
 		
+#ifdef _DEBUG
 		//Lua cleanup (clean resources etc)
 		liblua::cleanup();
-
 		lib3d::stop_global_timer();
+#endif // _DEBUG
 
 	} 
 	while (true);

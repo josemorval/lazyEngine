@@ -17,7 +17,7 @@ GridParticle spawn_particle(int id, int len)
         p.velocity = float3(0.0,0.0,0.0);
         p.time = -1.0*rand2;
         p.lifetime = 1.0;
-        p.size = 0.2;
+        p.size = 0.15;
         p.cellindex = 0;
     }
 
@@ -51,7 +51,7 @@ uint get_linear_index_from_grid_index(uint3 grid_index)
 
 uint3 get_grid_index_from_position(float3 pos)
 {
-    float size_box = 10.0;
+    float size_box = 20.0;
     pos/=size_box;
     pos += 0.5;
     return uint3(floor(pos*N));
@@ -103,8 +103,16 @@ void populate_grid(uint3 id : SV_DispatchThreadID)
             
             uint count;
             InterlockedAdd(rw_cellgrid_buffer[linearindex].particles_in_cell_current_count,1,count);
-            rw_cellgrid_buffer[linearindex].particles_in_cell[count] = id.x;
-            rw_gridparticle_buffer[id.x].cellindex = linearindex;
+            if(count<=50)
+            {
+                rw_cellgrid_buffer[linearindex].particles_in_cell[count] = id.x;
+                rw_gridparticle_buffer[id.x].cellindex = linearindex;
+            }
+            else
+            {
+                rw_gridparticle_buffer[id.x].cellindex = 1000000000;   
+            }
+            
         }
         else
         {
@@ -123,8 +131,7 @@ void update_particles(uint3 id : SV_DispatchThreadID)
 
     if(id.x<dim)
     {
-
-        float dt = 0.05*g_delta_time;
+        float dt = 0.001;
         float t = g_global_time;
 
         GridParticle p;
@@ -132,10 +139,15 @@ void update_particles(uint3 id : SV_DispatchThreadID)
 
         if(p.time>=0.0)
         {
-            float3 force = float3(0.0,-1000.0,0.0);
+            float3 force = float3(0.0,-100.0,0.0);
+
+            float3 pos_offset = 0.0 * float3(cos(g_global_time),0.0,sin(g_global_time));
+            pos_offset.y = 0.0;
+            force += 10.0*normalize(float3(-p.position.z,0.0,p.position.x));
+            force += 10*step(g_global_time,10.0)*normalize(-p.position+pos_offset)/(0.01+0.001*dot(p.position-pos_offset,p.position-pos_offset));
             p.position = p.position + p.velocity * dt + force * dt * dt; 
 
-            static float L=4.0;
+            static float L=5.0;
             if(p.position.x<-L) p.position.x=-L;
             if(p.position.x>L) p.position.x=L;
             if(p.position.y<-L) p.position.y=-L;
@@ -162,52 +174,59 @@ void update_particles(uint3 id : SV_DispatchThreadID)
             float3 delta = float3(0.0,0.0,0.0);
             float smoothie = 0.0;
             
-            for(int i=0;i<27;i++)
+            if(linearindex<1000000000)
             {
-                uint index_offsetted = linearindex+offset[i];
-                uint3 index_offsetted_3d = get_grid_index_from_linear_index(index_offsetted);
-
-                if(check_inside_grid(index_offsetted_3d))
+                for(int i=0;i<27;i++)
                 {
-                    uint count = cellgrid_buffer[index_offsetted].particles_in_cell_current_count;
-                    for(int j=0;j<count;j++)
+                    uint index_offsetted = linearindex+offset[i];
+                    uint3 index_offsetted_3d = get_grid_index_from_linear_index(index_offsetted);
+
+                    if(check_inside_grid(index_offsetted_3d))
                     {
-                        uint nindex = cellgrid_buffer[index_offsetted].particles_in_cell[j];
-                        if(nindex>=0 && nindex!=id.x)
+                        uint count = cellgrid_buffer[index_offsetted].particles_in_cell_current_count;
+                        for(int j=0;j<count;j++)
                         {
-                            if(rw_gridparticle_buffer[nindex].time>=0.0)
+                            uint nindex = cellgrid_buffer[index_offsetted].particles_in_cell[j];
+                            if(nindex>=0 && nindex!=id.x)
                             {
-
-                                float3 nposition = rw_gridparticle_buffer[nindex].position;
-                                float nsize = rw_gridparticle_buffer[nindex].size;
-                                float3 eab = p.position-nposition;
-                                float rab = length(eab);
-
-                                if(rab<p.size+nsize)
+                                if(rw_gridparticle_buffer[nindex].time>=0.0)
                                 {
-                                    delta += 0.5*(p.size+nsize-rab)*normalize(eab);
-                                }
 
-                                smoothie+=1.0;
+                                    float3 nposition = rw_gridparticle_buffer[nindex].position;
+                                    float nsize = rw_gridparticle_buffer[nindex].size;
+                                    float3 eab = p.position-nposition;
+                                    float rab = length(eab);
+
+                                    if(rab<p.size+nsize)
+                                    {
+                                        delta += 0.5*(p.size+nsize-rab)*normalize(eab);
+                                    }
+
+                                    smoothie+=0.001;
+                                }
                             }
                         }
                     }
-                }
+                }  
             }
+            
 
+            //smoothie = 0.0;
             p.position += delta/(smoothie+1.0);
             p.velocity = (p.position-rw_gridparticle_buffer[id.x].position)/dt;
 
-            if(length(delta/(smoothie+1.0))>0.01)
+            if(length(delta/(smoothie+1.0))>0.0001)
             {
-                p.velocity *=0.0;
+                //p.velocity *=0.9;
             }
 
         }
 
-        {
+        {   
             p.time+=dt;
-            //p.size -= 0.05*dt; p.size = clamp(p.size,0.2,1.0);
+
+            float rand4 = Hash(13.119*id.x + 5.113);
+            //p.size += 0.0005*sin(1.3*g_global_time+2.0*3.14159*rand4); p.size = clamp(p.size,0.04,0.5);
             if(p.time>p.lifetime)
             {   
                 

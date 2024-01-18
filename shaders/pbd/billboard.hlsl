@@ -46,7 +46,7 @@ PS_OUTPUT ps_main(VS_OUTPUT i)
 {
     PS_OUTPUT output;
     
-    if(length(i.texcoord.xy-0.5)>0.45) discard;
+    if(length(i.texcoord.xy-0.5)>0.5) discard;
 
     float3 view_normal = float3(1.0*(i.texcoord.xy-0.5),0.0);
     view_normal.z = -1.0;

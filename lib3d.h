@@ -5,8 +5,14 @@
 
 #include <d3d11.h>
 #include <d3dcompiler.h>
+
+#ifdef _DEBUG
 #include <stdio.h>
 #include <string>
+#endif // _DEBUG
+#include <vector>
+
+
 
 namespace lib3d
 { 
@@ -82,6 +88,8 @@ namespace lib3d
     17, 16, 18, 17, 18, 19, 
     20, 21, 22, 22, 21, 23  
     };
+
+#ifdef _DEBUG
     float sphere_vertices[] = { 0.1299455761909485,0.04222194477915764,-0.48096930980682373,0.20800308883190155,0.5269113779067993,0.099728062748909,0.1372639387845993,-0.9855013489723206,
     0.0,0.0,-0.5,0.25,0.5,0.0997280478477478,0.1372639238834381,-0.9855012893676758,
     0.0,0.13663290441036224,-0.48096930980682373,0.25,0.5881038904190063,0.0997280552983284,0.1372639387845993,-0.9855013489723206,
@@ -1363,6 +1371,7 @@ namespace lib3d
     951, 952, 953,
     954, 955, 956,
     957, 958, 959 };
+#endif
 
     static int WIDTH = 0;
     static int HEIGHT = 0;
@@ -1370,13 +1379,17 @@ namespace lib3d
     ID3D11ShaderResourceView* null_srv;
     ID3D11UnorderedAccessView* null_uav;
     ID3D11RenderTargetView* null_rtv;
+    ID3D11Buffer* null_buffer;
     ID3D11InputLayout* common_vertex_layout = nullptr;
     UINT common_vertex_layout_stride = 0;
 
+#ifdef _DEBUG
     LARGE_INTEGER li_timerfrequency;
     LARGE_INTEGER li_timerstart;
     LARGE_INTEGER li_timerend;
     float global_time_use;
+
+#endif
 
 #define MAX_LIST_SIZE 20
 #define add_to_list(type_list, object) for (int i = 0; i < MAX_LIST_SIZE; i++) if (type_list[i] == nullptr) { type_list[i] = object; list_index = i; break; }
@@ -1459,6 +1472,7 @@ namespace lib3d
         ID3D11UnorderedAccessView* uav;
 
         RenderTarget2D(){}
+        
         RenderTarget2D(int _width, int _height)
         {
             D3D11_TEXTURE2D_DESC textureDesc = {};
@@ -1476,6 +1490,14 @@ namespace lib3d
 
 
             device->CreateTexture2D(&textureDesc, nullptr, &rendertarget);
+            device->CreateRenderTargetView(rendertarget, nullptr, &rtv);
+            device->CreateShaderResourceView(rendertarget, nullptr, &srv);
+            device->CreateUnorderedAccessView(rendertarget, nullptr, &uav);
+        }
+
+        void get_backbuffer()
+        {
+            swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&rendertarget);
             device->CreateRenderTargetView(rendertarget, nullptr, &rtv);
             device->CreateShaderResourceView(rendertarget, nullptr, &srv);
             device->CreateUnorderedAccessView(rendertarget, nullptr, &uav);
@@ -1605,44 +1627,20 @@ namespace lib3d
         }
 
     };
-    struct Backbuffer
-    {
-        ID3D11Texture2D* rendertarget;
-        ID3D11RenderTargetView* rtv;
-
-        Backbuffer()
-        {
-            swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&rendertarget);
-            device->CreateRenderTargetView(rendertarget, nullptr, &rtv);
-        }
-
-        void set_rendertarget()
-        {
-            inmediate->OMSetRenderTargets(1, &rtv, nullptr);
-        }
-
-        void set_rendertarget_and_depth(RenderDepth2D _depth2d)
-        {
-            inmediate->OMSetRenderTargets(1, &rtv, _depth2d.dsv);
-        }
-
-        void clear_rendertarget(float _clean_color[4])
-        {
-            inmediate->ClearRenderTargetView(rtv, _clean_color);
-        }
-    };
     struct Buffer {
 
         ID3D11Buffer* buffer;
         ID3D11UnorderedAccessView* uav;
         ID3D11ShaderResourceView* srv;
 
-        Buffer(int _size, int _size_per_element)
+        Buffer(int _size, int _size_per_element, bool _cpu_read_access = false)
         {
             D3D11_BUFFER_DESC bufferDesc = {};
             bufferDesc.Usage = D3D11_USAGE_DEFAULT;
             bufferDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-            //bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+            
+            if(_cpu_read_access) bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
             bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
             bufferDesc.ByteWidth = _size_per_element*_size;
             bufferDesc.StructureByteStride = _size_per_element;
@@ -1689,6 +1687,7 @@ namespace lib3d
 
         ID3D11Buffer* buffer;
         D3D11_MAPPED_SUBRESOURCE mapped_subresource;
+        int nelements = 0;
 
         ConstantBuffer(int _size)
         {
@@ -1702,6 +1701,7 @@ namespace lib3d
             bufferDesc.ByteWidth = _size + 0xf & 0xfffffff0;
 
             device->CreateBuffer(&bufferDesc, nullptr, &buffer);
+            nelements = _size / 16;
         }
 
         void attach(int _slot)
@@ -1752,13 +1752,17 @@ namespace lib3d
         LPCWSTR filename;
         bool use_geo_shader = false;
 
+#ifdef _DEBUG
         std::string error_vertex_shader;
         std::string error_geometry_shader;
         std::string error_pixel_shader;
+#endif // _DEBUG
 
         void Compile()
         {
             ID3DBlob* blob; ID3DBlob* error_blob; HRESULT hr;
+
+#ifdef _DEBUG
             error_vertex_shader = "";
             error_pixel_shader = "";
             error_geometry_shader = "";
@@ -1768,9 +1772,13 @@ namespace lib3d
             int size_needed = WideCharToMultiByte(CP_UTF8, 0, filename, -1, nullptr, 0, nullptr, nullptr);
             char* filename_char = new char[size_needed];
             WideCharToMultiByte(CP_UTF8, 0, filename, -1, filename_char, size_needed, nullptr, nullptr);
+#endif // _DEBUG
 
             hr = D3DCompileFromFile(filename, 0, ((ID3DInclude*)(UINT_PTR)1), "vs_main", "vs_5_0", 0, 0, &blob, &error_blob);
-            if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) || hr == HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND)) {
+            
+#ifdef _DEBUG
+            if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) || hr == HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND))
+            {
                 // Manejar el caso en que el archivo no existe
                 error_vertex_shader += "Shader file not found: ";
                 error_vertex_shader += filename_char;
@@ -1778,7 +1786,8 @@ namespace lib3d
 
                 _anyfail = true;
             }
-            else if (FAILED(hr)) {
+            else if (FAILED(hr))
+            {
                 // Manejar otros errores de compilación según sea necesario
                 if (error_blob != nullptr && error_blob->GetBufferSize() > 0) {
                     std::string _s = std::string((const char*)(error_blob->GetBufferPointer()), error_blob->GetBufferSize());
@@ -1799,9 +1808,14 @@ namespace lib3d
             {
                 device->CreateVertexShader((void*)(((int*)blob)[3]), ((int*)blob)[2], NULL, &vs);
             }
+#else
+            device->CreateVertexShader((void*)(((int*)blob)[3]), ((int*)blob)[2], NULL, &vs);
+#endif// _DEBUG
 
             blob = nullptr; error_blob = nullptr;
             hr = D3DCompileFromFile(filename, 0, ((ID3DInclude*)(UINT_PTR)1), "ps_main", "ps_5_0", 0, 0, &blob, &error_blob);
+
+#ifdef _DEBUG
             if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) || hr == HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND)) {
                 // Manejar el caso en que el archivo no existe
                 error_pixel_shader += "Shader file not found: ";
@@ -1832,8 +1846,11 @@ namespace lib3d
             {
                 device->CreatePixelShader((void*)(((int*)blob)[3]), ((int*)blob)[2], NULL, &ps);
             }
+#else
+            device->CreatePixelShader((void*)(((int*)blob)[3]), ((int*)blob)[2], NULL, &ps);
+#endif
 
-
+#ifdef _DEBUG
             if (use_geo_shader)
             {
                 blob = nullptr; error_blob = nullptr;
@@ -1866,6 +1883,11 @@ namespace lib3d
                 }
             }
 
+#else
+            device->CreateGeometryShader((void*)(((int*)blob)[3]), ((int*)blob)[2], NULL, &gs);
+#endif
+
+#ifdef _DEBUG
             if (_anyfail)
             {
                 blob = nullptr; error_blob = nullptr;
@@ -1876,6 +1898,7 @@ namespace lib3d
                 D3DCompileFromFile(L"./shaders/fallback/material_default.hlsl", 0, ((ID3DInclude*)(UINT_PTR)1), "gs_main", "gs_5_0", 0, 0, &blob, &error_blob);
                 device->CreateGeometryShader((void*)(((int*)blob)[3]), ((int*)blob)[2], NULL, &gs);
             }
+#endif
         }
 
         FX(LPCWSTR _filename, bool _use_geo_shader)
@@ -1906,12 +1929,19 @@ namespace lib3d
         ID3D11ComputeShader* cs = nullptr;
         LPCWSTR filename;
         LPCSTR cs_id;
+
+#ifdef _DEBUG
         std::string error_compute_shader;
+#endif
 
         void Compile()
         {
             ID3DBlob* blob; ID3DBlob* error_blob; HRESULT hr;
+
+#if _DEBUG
             error_compute_shader = "";
+#endif // _DEBUG
+
             int size_needed = WideCharToMultiByte(CP_UTF8, 0, filename, -1, nullptr, 0, nullptr, nullptr);
             char* filename_char = new char[size_needed];
             WideCharToMultiByte(CP_UTF8, 0, filename, -1, filename_char, size_needed, nullptr, nullptr);
@@ -1920,6 +1950,8 @@ namespace lib3d
             WideCharToMultiByte(CP_UTF8, 0, filename, -1, kernel_char, size_needed, nullptr, nullptr);
 
             hr = D3DCompileFromFile(filename, 0, ((ID3DInclude*)(UINT_PTR)1), cs_id, "cs_5_0", 0, 0, &blob, &error_blob);
+            
+#if _DEBUG
             if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) || hr == HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND)) {
                 error_compute_shader += "Shader file not found: ";
                 error_compute_shader += filename_char;
@@ -1945,6 +1977,9 @@ namespace lib3d
             {
                 device->CreateComputeShader((void*)(((int*)blob)[3]), ((int*)blob)[2], NULL, &cs);
             }
+#else
+            device->CreateComputeShader((void*)(((int*)blob)[3]), ((int*)blob)[2], NULL, &cs);
+#endif
         }
 
         ComputeFX(LPCWSTR _filename, LPCSTR _cs_name)
@@ -2024,20 +2059,23 @@ namespace lib3d
     };
     struct AlphaBlending
     {
-        ID3D11BlendState* blending;
+        ID3D11BlendState* blending = nullptr;
         AlphaBlending()
         {
             D3D11_BLEND_DESC blend_desc = {};
-            blend_desc.RenderTarget[0].BlendEnable = TRUE;
-            blend_desc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-            blend_desc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-            blend_desc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-            blend_desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-            blend_desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
-            blend_desc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-            blend_desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-
+            {
+                blend_desc.RenderTarget[0].BlendEnable = TRUE;
+                blend_desc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+                blend_desc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+                blend_desc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+                blend_desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+                blend_desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+                blend_desc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+                blend_desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+            }
+            
             device->CreateBlendState(&blend_desc, &blending);
+
         }
         void use()
         {
@@ -2049,13 +2087,15 @@ namespace lib3d
     };
     struct DepthStencil
     {
-        ID3D11DepthStencilState* depth_stencil;
+        ID3D11DepthStencilState* depth_stencil = nullptr;
         DepthStencil(bool _depth_enable, D3D11_DEPTH_WRITE_MASK _write_mask, D3D11_COMPARISON_FUNC _comparison_func)
         {
             D3D11_DEPTH_STENCIL_DESC depthstencil_desc = {};
-            depthstencil_desc.DepthEnable = _depth_enable;
-            depthstencil_desc.DepthWriteMask = _write_mask; 
-            depthstencil_desc.DepthFunc = _comparison_func;
+            {
+                depthstencil_desc.DepthEnable = _depth_enable;
+                depthstencil_desc.DepthWriteMask = _write_mask;
+                depthstencil_desc.DepthFunc = _comparison_func; 
+            }
 
             device->CreateDepthStencilState(&depthstencil_desc, &depth_stencil);
         }
@@ -2069,17 +2109,22 @@ namespace lib3d
 
         ID3D11Buffer* vertex_buffer = nullptr;
         ID3D11Buffer* index_buffer = nullptr;
-        int indices_count;
 
-        UINT stride;
-        UINT offset;
+        ID3D11ShaderResourceView* vertex_srv = nullptr;
+        ID3D11ShaderResourceView* index_srv = nullptr;
+        
+        int vertices_count = 0;
+        int indices_count = 0;
+
+        unsigned int stride;
+        unsigned int offset;
 
         Mesh(float _vertices[], int _indices[], int _vertices_size, int _indices_size)
         {
             D3D11_BUFFER_DESC vertexBufferDesc = {};
             vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
             vertexBufferDesc.ByteWidth = _vertices_size;
-            vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+            vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER | D3D11_BIND_SHADER_RESOURCE;
 
             D3D11_SUBRESOURCE_DATA initData = {};
             initData.pSysMem = _vertices;
@@ -2088,16 +2133,51 @@ namespace lib3d
             D3D11_BUFFER_DESC indexBufferDesc = {};
             indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
             indexBufferDesc.ByteWidth = _indices_size;
-            indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+            indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER | D3D11_BIND_SHADER_RESOURCE;
+            indexBufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
 
             D3D11_SUBRESOURCE_DATA indexData = {};
             indexData.pSysMem = _indices;
             device->CreateBuffer(&indexBufferDesc, &indexData, &index_buffer);
 
+            vertices_count = _vertices_size / sizeof(float);
             indices_count = _indices_size / sizeof(int);
 
             stride = 8 * sizeof(float);
             offset = 0;
+
+            D3D11_SHADER_RESOURCE_VIEW_DESC vertexSRVDesc = {};
+            vertexSRVDesc.Format = DXGI_FORMAT_R32_FLOAT; // Ajusta el formato según tus necesidades
+            vertexSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+            vertexSRVDesc.Buffer.ElementOffset = 0;
+            vertexSRVDesc.Buffer.ElementWidth = sizeof(_vertices_size) / sizeof(float);
+            device->CreateShaderResourceView(vertex_buffer, &vertexSRVDesc, &vertex_srv);
+
+            // Crear SRV para el búfer de índices
+            D3D11_SHADER_RESOURCE_VIEW_DESC indexSRVDesc = {};
+            indexSRVDesc.Format = DXGI_FORMAT_R32_UINT; // Ajusta el formato según tus necesidades
+            indexSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+            indexSRVDesc.Buffer.ElementOffset = 0;
+            indexSRVDesc.Buffer.ElementWidth = _indices_size / sizeof(int);
+            device->CreateShaderResourceView(index_buffer, &indexSRVDesc, &index_srv);
+            
+
+        }
+
+        void attach_vertices_srv(int _slot)
+        {
+            inmediate->VSSetShaderResources(_slot, 1, &vertex_srv);
+            inmediate->GSSetShaderResources(_slot, 1, &vertex_srv);
+            inmediate->PSSetShaderResources(_slot, 1, &vertex_srv);
+            inmediate->CSSetShaderResources(_slot, 1, &vertex_srv);
+        }
+
+        void attach_indices_srv(int _slot)
+        {
+            inmediate->VSSetShaderResources(_slot, 1, &index_srv);
+            inmediate->GSSetShaderResources(_slot, 1, &index_srv);
+            inmediate->PSSetShaderResources(_slot, 1, &index_srv);
+            inmediate->CSSetShaderResources(_slot, 1, &index_srv);
         }
 
         void use()
@@ -2124,23 +2204,101 @@ namespace lib3d
             vertex_buffer = nullptr;
             index_buffer->Release();
             index_buffer = nullptr; 
+            vertex_srv->Release();
+            vertex_srv = nullptr;
+            index_srv->Release();
+            index_srv = nullptr;
         }
     };
+    
+#ifdef _DEBUG
+    struct GPUTimer {
 
-        void setup_device(HINSTANCE handle_instance)
+        static const int max_query_points = 50;
+
+        ID3D11Query* gpuQueryDisjoint;
+        ID3D11Query* gpuQueryPoints[max_query_points];
+
+        int numQueryPoints;
+
+        std::vector<std::string> blockNames;
+        std::vector<float> blockTimes;
+
+        GPUTimer() {
+            numQueryPoints = 0;
+            D3D11_QUERY_DESC queryDesc;
+            queryDesc.MiscFlags = 0;
+            queryDesc.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
+            device->CreateQuery(&queryDesc, &gpuQueryDisjoint);
+            queryDesc.MiscFlags = 0;
+            queryDesc.Query = D3D11_QUERY_TIMESTAMP;
+            for (int i = 0; i < max_query_points; i++)
+            {
+                device->CreateQuery(&queryDesc, &gpuQueryPoints[i]);
+                blockTimes.push_back(0.0f);
+                blockNames.push_back("");
+            }
+        }
+
+        void begin_profile()
         {
-            
-            WIDTH = 960; HEIGHT = 540;
-            
-            /*
-            static int swap_chain_desc[] = {
-            WIDTH, HEIGHT, 0, 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, DXGI_MODE_SCALING_UNSPECIFIED,  // w,h,refreshrate,format, scanline, (fullscreen)scaling
-            1, 0, // sampledesc (count, quality)
-            DXGI_USAGE_RENDER_TARGET_OUTPUT, // usage
-            1, // buffercount
-            0, // hwnd
-            1, 0, 0 }; // windowed, swap_discard, flags
-            */
+            for (int i = 0; i < max_query_points; i++)
+            {
+                blockTimes.push_back(0.0f);
+                blockNames.push_back("");
+            }
+
+            numQueryPoints = 0;
+            inmediate->Begin(gpuQueryDisjoint);
+        }
+
+        void new_block(const std::string& blockName) {
+            inmediate->End(gpuQueryPoints[numQueryPoints]);
+            blockNames[numQueryPoints] = blockName;
+            numQueryPoints++;
+        }
+
+        void end_profile()
+        {
+            inmediate->End(gpuQueryPoints[numQueryPoints]);
+            blockNames[numQueryPoints] = "End";
+            inmediate->End(gpuQueryDisjoint);
+            numQueryPoints++;
+
+            UINT64 utimes[max_query_points];
+
+            for (int i = 0; i < numQueryPoints; i++)
+            {
+                while (inmediate->GetData(gpuQueryPoints[i], &utimes[i], sizeof(utimes[i]), 0) != S_OK);
+            }
+
+            D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjointdata;
+            while (inmediate->GetData(gpuQueryDisjoint, &disjointdata, sizeof(disjointdata), 0) != S_OK);
+            if (!disjointdata.Disjoint)
+            {
+                for (int i = 0; i < numQueryPoints - 1; i++) {
+                    UINT64 Delta = utimes[i + 1] - utimes[i];
+                    float Frequency = (float)disjointdata.Frequency;
+
+                    if (blockTimes[i] == 0.0f)
+                    {
+                        blockTimes[i] = (Delta / Frequency) * 1000.0f;
+                    }
+                    else
+                    {
+                        blockTimes[i] = 0.1f * (Delta / Frequency) * 1000.0f + 0.9f * blockTimes[i];
+                    }
+                }
+            }
+        }
+
+    };
+#endif
+
+    void setup_device(HINSTANCE handle_instance)
+        {
+
+            WIDTH = 960 * 3 / 3; HEIGHT = 540 * 3 / 3;
 
             DXGI_SWAP_CHAIN_DESC swap_chain_desc = {};
             swap_chain_desc.BufferCount = 1;
@@ -2158,41 +2316,50 @@ namespace lib3d
             swap_chain_desc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
             swap_chain_desc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
 
-
-            HICON hIcon = (HICON)LoadImage(NULL,"app.ico", IMAGE_ICON,0,0,LR_LOADFROMFILE);
+            HICON hIcon = (HICON)LoadImage(NULL, "app.ico", IMAGE_ICON, 0, 0, LR_LOADFROMFILE);
             WNDCLASS wc = {};
             wc.hInstance = handle_instance;
             wc.lpszClassName = "custom_class";
-            wc.lpfnWndProc = DefWindowProc; 
-            wc.hbrBackground = CreateSolidBrush(RGB(0, 0, 0));
+            wc.lpfnWndProc = DefWindowProc;
+            //wc.hbrBackground = CreateSolidBrush(RGB(0, 0, 0));
             wc.hIcon = hIcon;
             RegisterClass(&wc);
 
+            //Get refresh rate screen
+            /*
+            DEVMODE devMode;
+            EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &devMode);
+            int refreshRate = devMode.dmDisplayFrequency;
+            */
 
-            // Creación de la ventana
-            window = CreateWindowA("custom_class","lazy[E]ngine", WS_OVERLAPPEDWINDOW | WS_VISIBLE,0, 0,WIDTH, HEIGHT, 0,0,handle_instance,0);
-            //window = CreateWindowA("edit", "lazy[E]ngine", WS_OVERLAPPED, 0, 0, WIDTH, HEIGHT, 0, 0, handle_instance, 0);
+            window = CreateWindowA("custom_class", "lazy[E]ngine", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, WIDTH, HEIGHT, 0, 0, handle_instance, 0);
 
-            //Block resize window
             SetWindowLong(window, GWL_STYLE, GetWindowLong(window, GWL_STYLE) & ~WS_THICKFRAME);
             SetWindowPos(window, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 
+#ifdef _DEBUG
             ShowCursor(false);
+#else
+            ShowCursor(true);
+#endif
             swap_chain_desc.OutputWindow = window;
             D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, D3D11_CREATE_DEVICE_DEBUG, 0, 0, D3D11_SDK_VERSION, (DXGI_SWAP_CHAIN_DESC*)&swap_chain_desc, &swapchain, &device, NULL, &inmediate);
 
+            
             //Here we define a common vertex layout for all meshes. Only accepted position (3f), texcoord (2f) and normal (3f)
             //It is possible to extend for other (maybe more general) layouts.
+            
             {
                 ID3D11VertexShader* vs = nullptr;
                 ID3DBlob* inputlayoutsignature;
                 D3DCompileFromFile(L"./shaders/inputsignature.hlsl", 0, 0, "main", "vs_5_0", 0, 0, &inputlayoutsignature, nullptr);
                 device->CreateVertexShader((void*)(((int*)inputlayoutsignature)[3]), ((int*)inputlayoutsignature)[2], NULL, &vs);
 
-                D3D11_INPUT_ELEMENT_DESC layout[] = {
-                         {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-                         {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
-                         {"NORMAL", 0,   DXGI_FORMAT_R32G32B32_FLOAT, 0, 20, D3D11_INPUT_PER_VERTEX_DATA, 0},
+                D3D11_INPUT_ELEMENT_DESC layout[3] =
+                {
+                     { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+                     { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+                     { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 20, D3D11_INPUT_PER_VERTEX_DATA, 0 }
                 };
 
                 device->CreateInputLayout(layout, ARRAYSIZE(layout), inputlayoutsignature->GetBufferPointer(), inputlayoutsignature->GetBufferSize(), &common_vertex_layout);
@@ -2200,7 +2367,9 @@ namespace lib3d
                 common_vertex_layout_stride = 8 * sizeof(float);
             }
 
+#ifdef _DEBUG
             QueryPerformanceFrequency(&li_timerfrequency);
+#endif // _DEBUG
         }
     
     void clean_srv(int _slot)
@@ -2214,6 +2383,15 @@ namespace lib3d
     {
         inmediate->CSSetUnorderedAccessViews(_slot, 1, &null_uav, nullptr);
     }
+
+    void clean_constantbuffers(int _slot)
+    {
+        inmediate->VSSetConstantBuffers(_slot, 1, &null_buffer);
+        inmediate->GSSetConstantBuffers(_slot, 1, &null_buffer);
+        inmediate->PSSetConstantBuffers(_slot, 1, &null_buffer);
+        inmediate->CSSetConstantBuffers(_slot, 1, &null_buffer);
+    }
+
     void clear_blending()
     {
         inmediate->OMSetBlendState(nullptr, nullptr, 0xFFFFFFFF);
@@ -2232,39 +2410,17 @@ namespace lib3d
         inmediate->DrawInstanced(_vertexcount, _instancecount, 0, 0);
     }
 
-    void set_renders_and_uavs(RenderTarget2D* rendertarget2d, RenderDepth2D* renderdepth2d, ID3D11UnorderedAccessView* uavs[], int offsetuavs, int numuavs)
+    void set_renders_and_uavs(ID3D11RenderTargetView* rtvs[], int numrtvs, ID3D11DepthStencilView* dsv, ID3D11UnorderedAccessView* uavs[], int offsetuavs, int numuavs)
     {
-        /*
-        if (rendertarget2d != nullptr)
-        {
-            if (renderdepth2d != nullptr)
-            {
-                inmediate->OMSetRenderTargetsAndUnorderedAccessViews(1, &rendertarget2d->rtv, renderdepth2d->dsv, offsetuavs, numuavs, uavs, nullptr);
-            }
-            else
-            {
-                inmediate->OMSetRenderTargetsAndUnorderedAccessViews(1, &rendertarget2d->rtv, nullptr, offsetuavs, numuavs, uavs, nullptr);
-            }
-        }
-        else
-        {
-            if (renderdepth2d != nullptr)
-            {
-                inmediate->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, renderdepth2d->dsv, offsetuavs, numuavs, uavs, nullptr);
-            }
-            else
-            {
-                inmediate->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, offsetuavs, numuavs, uavs, nullptr);
-            }
-        }
-        */
+        inmediate->OMSetRenderTargetsAndUnorderedAccessViews(numrtvs, rtvs, dsv, offsetuavs, numuavs, uavs, 0 );        
     }
 
+#ifdef _DEBUG
     void clear_all_list()
     {
         for (int i = 0; i < MAX_LIST_SIZE; i++)
         {
-            if (renderdepth2D_list[i]!=nullptr) renderdepth2D_list[i]->release(), renderdepth2D_list[i] = nullptr;
+            if (renderdepth2D_list[i] != nullptr) renderdepth2D_list[i]->release(), renderdepth2D_list[i] = nullptr;
             if (rendertarget2D_list[i] != nullptr) rendertarget2D_list[i]->release(), rendertarget2D_list[i] = nullptr;
             if (rendertarget3D_list[i] != nullptr) rendertarget3D_list[i]->release(), rendertarget3D_list[i] = nullptr;
             if (buffer_list[i] != nullptr) buffer_list[i]->release(), buffer_list[i] = nullptr;
@@ -2274,7 +2430,9 @@ namespace lib3d
             if (mesh_list[i] != nullptr) mesh_list[i]->release(), mesh_list[i] = nullptr;
         }
     }
+#endif // _DEBUG
 
+#ifdef _DEBUG
     void start_global_timer() 
     {
         QueryPerformanceCounter(&li_timerstart);
@@ -2286,4 +2444,7 @@ namespace lib3d
         double duration = (float)(li_timerend.QuadPart - li_timerstart.QuadPart) / static_cast<double>(li_timerfrequency.QuadPart);
         global_time_use = (duration * 1000);
     }
+#endif
+
+
 }

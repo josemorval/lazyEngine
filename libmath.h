@@ -3,8 +3,6 @@
 #define _LIBMATH_H_
 #endif
 
-#include "math.h"
-
 struct float2 {
 	float x, y; float2(float _x, float _y) { x = _x; y = _y; }
 };

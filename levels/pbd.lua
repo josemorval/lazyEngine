@@ -27,6 +27,8 @@ function init()
         end
     }
 
+    maindepth_texture = create_renderdepth2D(screenx,screeny)
+
     standard_material = create_fx("./shaders/standard.hlsl", false)
     billboard_material = create_fx("./shaders/pbd/billboard.hlsl", false)
 
@@ -35,11 +37,15 @@ function init()
     gpuparticle_populategrid = create_computefx("./shaders/pbd/compute_particle.cs", "populate_grid")
     gpuparticle_updateparticles = create_computefx("./shaders/pbd/compute_particle.cs", "update_particles")
 
-    number_particles = 1500
+    number_particles = 10000
     number_grid_cells = 30*30*30
     
     particle_buffer = create_buffer(number_particles,40)
     grid_buffer = create_buffer(number_grid_cells,208)
+
+    custom_constantbuffer = create_constantbuffer(16*3)
+    attach_constantbuffer(custom_constantbuffer,3)
+    update_constantbuffer(custom_constantbuffer,0,2.1,1,3.12)
 
     attach_uav_buffer(particle_buffer,3)
     use_computefx(gpuparticle_initparticles)
@@ -49,37 +55,52 @@ function init()
 end
   
 function imgui() 
-    imgui_begin("Scene")
-        if imgui_button("Restart") then
-            attach_uav_buffer(particle_buffer,3)
-            use_computefx(gpuparticle_initparticles)
-            dispatch_computefx(gpuparticle_initparticles,math.ceil(number_particles/64),1,1)
-            clean_uav(3)  
-        end
-    imgui_end()
+
+    imgui_begin("GPU Performance")
+    local count = gputimer_count()
     
+    for i=0,count-2 do
+        local name, time = gputimer_value(i)
+        imgui_text(tostring(name) .. " " .. string.format("%.2f",time))
+    end
+
+    imgui_end()
+
 end  
 
 function render()
-    global_t = get_time()
-    delta_t = 3.0 * get_delta_time()
 
+    gputimer_begin_profile()
+
+    global_t = get_time()
+    delta_t = 1.0 * get_delta_time()
+
+    gputimer_begin_block("Initialize grid")
     use_computefx(gpuparticle_initgrid)
     attach_uav_buffer(grid_buffer,4)
     dispatch_computefx(gpuparticle_initgrid,math.ceil(number_grid_cells/64),1,1)
     clean_uav(4)
 
+    gputimer_begin_block("-")
     use_computefx(gpuparticle_populategrid)
     attach_uav_buffer(particle_buffer,3) attach_uav_buffer(grid_buffer,4)
     dispatch_computefx(gpuparticle_populategrid,math.ceil(number_particles/64),1,1)
     clean_uav(3) clean_uav(4) 
 
+
+    
+    gputimer_begin_block("Update particles")
+    for i=1,4 do
+    --gputimer_begin_block("Update particles" .. " " .. i)
     use_computefx(gpuparticle_updateparticles)
     attach_uav_buffer(particle_buffer,3) attach_srv_buffer(grid_buffer,4)
-    for i=1,3 do
     dispatch_computefx(gpuparticle_updateparticles,math.ceil(number_particles/64),1,1)
-    end
     clean_uav(3) clean_srv(4)
+    end
+    
+    
+    gputimer_begin_block("Render")
+
 
     main_camera:use()
 
@@ -88,12 +109,12 @@ function render()
     use_write_depthstencil()
 
     clear_rendertarget_backbuffer(0.1,0.1,0.1,1.0)
-    clear_depth_depthmain()
-    set_rendertarget_and_depthmain_backbuffer()
+    clear_depth_renderdepth2D(maindepth_texture)
+    set_rendertarget_and_depth_backbuffer(maindepth_texture)
 
-    set_translation_transform(0,0.0,-4.0,0.0)
+    set_translation_transform(0,0.0,-5.0,0.0)
     set_rotation_transform(0,0.0,1.0,0.0,0.0)
-    set_scale_transform(0,8.0,0.1,8.0)
+    set_scale_transform(0,10.0,0.1,10.0)
     update_transformbuffer()
 
     use_cube()
@@ -105,6 +126,9 @@ function render()
     use_quad()
     draw_instances_quad(number_particles)
     clean_srv(3)
+
+    gputimer_end_profile()
+
 end
 
 

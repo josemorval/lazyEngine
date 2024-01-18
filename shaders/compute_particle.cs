@@ -36,16 +36,6 @@ void init(uint3 id : SV_DispatchThreadID)
     rw_particle_buffer[id.x] = spawn_particle(id.x, dim);
 }
 
-[numthreads(1, 1, 1)]
-void populate_grid(uint3 id : SV_DispatchThreadID)
-{
-    //CellGrid cg = rw_cellgrid_buffer[id.x];
-    //cg.particles_in_cell_max_count = 20;
-    //cg.particles_in_cell_current_count = 0;
-    //rw_cellgrid_buffer[id.x] = cg;
-}
-
-
 [numthreads(64, 1, 1)]
 void update(uint3 id : SV_DispatchThreadID) 
 {
@@ -69,7 +59,8 @@ void update(uint3 id : SV_DispatchThreadID)
 
         float3 prevpos = p.position - dt * p.velocity;
         p.position = 2.0*p.position - prevpos + dt*dt*force;
-        prevpos = rw_particle_buffer[id.x].position;
+        prevpos
+         = rw_particle_buffer[id.x].position;
         p.velocity = 0.99999*(p.position-prevpos)/dt;
     }
 

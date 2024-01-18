@@ -26,11 +26,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="lib3d.h" />
-    <ClInclude Include="libimgui.h" />
-    <ClInclude Include="liblua.h" />
     <ClInclude Include="libmath.h" />
-    <ClInclude Include="libmidi.h" />
-    <ClInclude Include="luabindings_generated.h" />
     <ClInclude Include="vars.h" />
     <ClInclude Include="imgui\imconfig.h">
       <Filter>imgui</Filter>
@@ -56,6 +52,14 @@
     <ClInclude Include="imgui\imstb_truetype.h">
       <Filter>imgui</Filter>
     </ClInclude>
+    <ClInclude Include="libimgui.h" />
+    <ClInclude Include="liblua.h" />
+    <ClInclude Include="libmidi.h" />
+    <ClInclude Include="libmem.h" />
+    <ClInclude Include="luabindings_generated.h" />
+    <ClInclude Include="obj_loader\fast_obj.h">
+      <Filter>obj_loader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="app.ico" />
@@ -70,6 +74,9 @@
   <ItemGroup>
     <Filter Include="imgui">
       <UniqueIdentifier>{a077e7ff-4a74-4626-9ab9-3ede25f622cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="obj_loader">
+      <UniqueIdentifier>{3a93c214-072f-415d-a363-182d3bcd828a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

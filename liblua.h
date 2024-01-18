@@ -19,6 +19,8 @@ extern "C" {
 #include <iostream>
 #include <cstring>
 
+#define FAST_OBJ_IMPLEMENTATION
+#include "fast_obj.h"
 
 #define UPDATE_SOFTERROR  lua_Debug ar;\
                           lua_getstack(L, 1, &ar);\
@@ -213,9 +215,7 @@ namespace liblua
         }
     }
 
-    ////////////////////////////
-    /// IMGUI BINDINGS
-    ///////////////////////////
+#pragma region imgui bindings
 
     static int imgui_begin(lua_State* L)
     {
@@ -455,7 +455,6 @@ namespace liblua
         return 0;
     }
 
-
     static int imgui_image_rendertarget2D(lua_State* L) {
         int index = lua_tointeger(L, 1);
         int dimx = lua_tointeger(L, 2);
@@ -486,11 +485,9 @@ namespace liblua
         return 0;
     }
 
-    ////////////////////////////
-    /// 3D BINDINGS
-    ///////////////////////////
+#pragma endregion
+#pragma region rendertarget2d bindings
 
-    /*RENDER TARGET 2D*/
     static int create_rendertarget2D(lua_State* L)
     {
         int _dimx = lua_tointeger(L, 1);
@@ -575,7 +572,9 @@ namespace liblua
         return 0;
     }
 
-    /*RENDER TARGET 3D*/
+#pragma endregion
+#pragma region rendertarget3d bindings
+
     static int create_rendertarget3D(lua_State* L)
     {
         int _dimx = lua_tointeger(L, 1);
@@ -645,6 +644,9 @@ namespace liblua
         return 0;
     }
 
+#pragma endregion
+#pragma region backbuffer bindings
+
     /*BACKBUFFER*/
     static int set_rendertarget_backbuffer(lua_State* L)
     {
@@ -659,13 +661,6 @@ namespace liblua
         return 0;
     }
 
-    static int set_rendertarget_and_depthmain_backbuffer(lua_State* L)
-    {
-        int _index_depth = lua_tointeger(L, 1);
-        rendertarget_main->set_rendertarget_and_depth(*depth_main);
-        return 0;
-    }
-
     static int clear_rendertarget_backbuffer(lua_State* L)
     {
         float _colr = lua_tonumber(L, 1);
@@ -677,24 +672,8 @@ namespace liblua
         return 0;
     }
 
-    static int attach_srv_depthmain(lua_State* L)
-    {
-        int _slot = lua_tointeger(L, 1);
-        depth_main->attach_srv(_slot);
-        return 0;
-    }
-
-    static int clear_depth_depthmain(lua_State* L)
-    {
-        depth_main->clear_depth();
-        return 0;
-    }
-
-    static int set_depth_depthmain(lua_State* L)
-    {
-        depth_main->set_depth();
-        return 0;
-    }
+#pragma endregion
+#pragma region renderdepth2d bindings
 
     /*RENDER DEPTH 2D*/
     static int create_renderdepth2D(lua_State* L)
@@ -741,13 +720,17 @@ namespace liblua
         return 0;
     }
 
-    /*BUFFER*/
+#pragma endregion
+#pragma region buffer bindings
+
     static int create_buffer(lua_State* L)
     {
         int _size = lua_tointeger(L, 1);
         int _size_per_element = lua_tointeger(L, 2);
+        bool _cpu_access = lua_tointeger(L, 3);
+
         int list_index = -1;
-        lib3d::Buffer* buffer = new lib3d::Buffer(_size, _size_per_element);
+        lib3d::Buffer* buffer = new lib3d::Buffer(_size, _size_per_element,_cpu_access);
         add_to_list(lib3d::buffer_list, buffer);
         lua_pushinteger(L, list_index);
         return 1;
@@ -780,7 +763,106 @@ namespace liblua
         return 0;
     }
 
-    /*FX*/
+    static int get_data_buffer(lua_State* L)
+    {
+        int list_index = lua_tointeger(L, 1);
+        if (lib3d::buffer_list[list_index] != nullptr)
+        {
+            D3D11_MAPPED_SUBRESOURCE mappedResource;
+            HRESULT hr = lib3d::inmediate->Map(lib3d::buffer_list[list_index]->buffer, 0, D3D11_MAP_READ, 0, &mappedResource);
+            if (SUCCEEDED(hr))
+            {
+                lua_pushlightuserdata(L, (void*)mappedResource.pData);
+                lib3d::inmediate->Unmap(lib3d::buffer_list[list_index]->buffer, 0);
+                return 1;
+            }
+
+        }
+        return 0;
+    }
+
+    static int move_pointer(lua_State* L)
+    {
+        lua_pushlightuserdata(L, (void*)((char*)lua_topointer(L, 1) + lua_tointeger(L, 2)));
+        return 1;
+    }
+
+    static int convert_float_pointer(lua_State* L)
+    {
+        lua_pushnumber(L,*((float*)lua_topointer(L, 1)));
+        return 1;
+    }
+
+    static int convert_bool_pointer(lua_State* L)
+    {
+        lua_pushboolean(L, *((bool*)lua_topointer(L, 1)));
+        return 1;
+    }
+
+    static int convert_int_pointer(lua_State* L)
+    {
+        lua_pushinteger(L, *((int*)lua_topointer(L, 1)));
+        return 1;
+    }
+
+#pragma endregion
+#pragma region constantbuffer bindings
+
+    static int create_constantbuffer(lua_State* L)
+    {
+        int _size = lua_tointeger(L, 1);
+        int list_index = -1;
+        lib3d::ConstantBuffer* buffer = new lib3d::ConstantBuffer(_size);
+        add_to_list(lib3d::constantbuffer_list, buffer);
+        lua_pushinteger(L, list_index);
+        return 1;
+    }
+
+    static int destroy_constantbuffer(lua_State* L)
+    {
+        int _list_index = lua_tointeger(L, 1);
+        if (lib3d::constantbuffer_list[_list_index] != nullptr)
+        {
+            lib3d::constantbuffer_list[_list_index]->release();
+            lib3d::constantbuffer_list[_list_index] = nullptr;
+        }
+        return 0;
+    }
+
+    static int attach_constantbuffer(lua_State* L)
+    {
+        int list_index = lua_tointeger(L, 1);
+        int _slot = lua_tointeger(L, 2);
+        lib3d::constantbuffer_list[list_index]->attach(_slot);
+        return 0;
+    }
+
+    static int update_constantbuffer(lua_State* L)
+    {
+        int _nargs = lua_gettop(L);
+        int _index = lua_tointeger(L, 1);
+
+        lib3d::constantbuffer_list[_index]->map();
+
+        float* _variables = (float*)lib3d::constantbuffer_list[_index]->get_data();
+        
+        for (int i = 1; i < _nargs; i+=2)
+        {   
+            int _slot = lua_tointeger(L, i + 1);
+            if (_slot < lib3d::constantbuffer_list[_index]->nelements)
+            {
+                _variables[_slot] = lua_tonumber(L, i + 2);
+            }
+        }
+
+        lib3d::constantbuffer_list[_index]->unmap();
+        
+        return 0;
+    }
+
+#pragma endregion
+#pragma region fx bindings
+
     static int create_fx(lua_State* L)
     {
         int list_index = -1;
@@ -816,7 +898,9 @@ namespace liblua
         return 0;
     }
 
-    /*COMPUTE FX*/
+#pragma endregion
+#pragma region computefx bindings
+
     static int create_computefx(lua_State* L)
     {
         int list_index = -1;
@@ -861,7 +945,9 @@ namespace liblua
         return 0;
     }
 
-    /*VIEWPORT*/
+#pragma endregion
+#pragma region viewport bindings
+
     static int use_viewport(lua_State* L)
     {
         float _offsetx0 = lua_tonumber(L, 1);
@@ -873,7 +959,9 @@ namespace liblua
         return 0;
     }
 
-    /*RASTERIZER*/
+#pragma endregion
+#pragma region rasterizer bindings
+
     static int use_rasterizer(lua_State* L)
     {
         rasterizer->use();
@@ -892,7 +980,9 @@ namespace liblua
         return 0;
     }
 
-    /*ALPHA BLENDING*/
+#pragma endregion
+#pragma region alphablending bindings
+
     static int use_alphablending(lua_State* L)
     {
         alpha_blending->use();
@@ -905,7 +995,9 @@ namespace liblua
         return 0;
     }
 
-    /*DEPTH STENCIL*/
+#pragma endregion
+#pragma region depthstencil bindings
+
     static int use_nowrite_depthstencil(lua_State* L)
     {
         nowrite_depthstencil->use();
@@ -924,7 +1016,87 @@ namespace liblua
         return 0;
     }
 
-    /*MESH*/
+#pragma endregion
+#pragma region mesh bindings
+
+    static int use_mesh(lua_State* L)
+    {
+        int list_index = lua_tointeger(L, 1);
+        if (lib3d::mesh_list[list_index] != nullptr)
+        {
+            lib3d::mesh_list[list_index]->use();
+        }
+        return 0;
+    }
+
+    static int draw_mesh(lua_State* L)
+    {
+        int list_index = lua_tointeger(L, 1);
+        if (lib3d::mesh_list[list_index] != nullptr)
+        {
+            lib3d::mesh_list[list_index]->draw();
+        }
+        return 0;
+    }
+
+    static int draw_instances_mesh(lua_State* L)
+    {
+        int list_index = lua_tointeger(L, 1);
+        int _instances = lua_tointeger(L, 2);
+
+        if (lib3d::mesh_list[list_index] != nullptr)
+        {
+            lib3d::mesh_list[list_index]->draw_instanced(_instances);
+        }
+        return 0;
+    }
+
+    static int vertices_count_mesh(lua_State* L)
+    {
+        int list_index = lua_tointeger(L, 1);
+        if (lib3d::mesh_list[list_index] != nullptr)
+        {
+            lua_pushinteger(L,lib3d::mesh_list[list_index]->vertices_count);
+        }
+        else
+        {
+            lua_pushinteger(L, 0);
+        }
+
+        return 1;
+    }
+
+    static int indices_count_mesh(lua_State* L)
+    {
+        int list_index = lua_tointeger(L, 1);
+        if (lib3d::mesh_list[list_index] != nullptr)
+        {
+            lua_pushinteger(L, lib3d::mesh_list[list_index]->indices_count);
+        }
+        else
+        {
+            lua_pushinteger(L, 0);
+        }
+
+        return 1;
+    }
+
+    static int attach_vertices_srv_mesh(lua_State* L)
+    {
+        int list_index = lua_tointeger(L, 1);
+        int _slot = lua_tointeger(L, 2);
+        lib3d::mesh_list[list_index]->attach_vertices_srv(_slot);
+        return 0;
+    }
+
+    static int attach_indices_srv_mesh(lua_State* L)
+    {
+        int list_index = lua_tointeger(L, 1);
+        int _slot = lua_tointeger(L, 2);
+        lib3d::mesh_list[list_index]->attach_indices_srv(_slot);
+        return 0;
+    }
+
     static int use_cube(lua_State* L)
     {
         mesh_cube->use();
@@ -991,7 +1163,44 @@ namespace liblua
         return 0;
     }
 
-    /*MISC*/
+#pragma endregion
+#pragma region gputimer bindings
+
+    static int gputimer_begin_block(lua_State* L)
+    {
+        const char* _label = lua_tostring(L, 1);
+        gpu_timer->new_block(_label);
+        return 0;
+    }
+
+    static int gputimer_count(lua_State* L)
+    {
+        lua_pushinteger(L,gpu_timer->numQueryPoints);
+        return 1;
+    }
+
+    static int gputimer_value(lua_State* L)
+    {
+        int _index = lua_tointeger(L, 1);
+        lua_pushstring(L, gpu_timer->blockNames[_index].c_str());
+        lua_pushnumber(L, gpu_timer->blockTimes[_index]);
+        return 2;
+    }
+
+    static int gputimer_begin_profile(lua_State* L)
+    {
+        gpu_timer->begin_profile();
+        return 0;
+    }
+
+    static int gputimer_end_profile(lua_State* L)
+    {
+        gpu_timer->end_profile();
+        return 0;
+    }
+#pragma endregion
+#pragma region misc bindings
+
     static int get_window_size(lua_State* L)
     {
         lua_pushinteger(L, lib3d::WIDTH);
@@ -1084,11 +1293,68 @@ namespace liblua
     static int create_particle_buffer(lua_State* L)
     {
         int _size = lua_tointeger(L, 1);
+        bool _cpu_access = lua_tointeger(L, 2);
         int list_index = -1;
-        lib3d::Buffer* buffer = new lib3d::Buffer(_size, sizeof(Particle));
+        lib3d::Buffer* buffer = new lib3d::Buffer(_size, sizeof(Particle),_cpu_access);
         add_to_list(lib3d::buffer_list, buffer);
         lua_pushinteger(L, list_index);
         return 1;
+    }
+
+    static int set_rendertarget_depth_and_uavs(lua_State* L)
+    {
+        bool _use_backbuffer = lua_tointeger(L, 1);
+        int _num_rtvs = 0;
+        int _num_uavs_2d = 0;
+        int _num_uavs_3d = 0;
+
+        if (_use_backbuffer) _num_rtvs = 1;
+
+        if (lua_istable(L, 2))
+        {
+            int _n = lua_rawlen(L, 2);
+            _num_rtvs += _n;
+        }
+
+        if (lua_istable(L, 3))
+        {
+            int _n = lua_rawlen(L, 3);
+            _num_uavs_2d += _n;
+        }
+
+        if (lua_istable(L, 4))
+        {
+            int _n = lua_rawlen(L, 4);
+            _num_uavs_3d += _n;
+        }
+
+        int _depth_index = lua_tointeger(L, 5);
+        int _offset_uav = lua_tointeger(L, 6);
+        ID3D11DepthStencilView* _dsv = lib3d::renderdepth2D_list[_depth_index]->dsv;
+        ID3D11RenderTargetView** _rtvs = new ID3D11RenderTargetView*[_num_rtvs];
+        {
+            _rtvs[0] = rendertarget_main->rtv;
+            for (int i = 1; i < _num_rtvs; i++)
+            {
+                _rtvs[i] = lib3d::rendertarget2D_list[lua_rawgeti(L, 2, i)]->rtv;
+            }
+        }
+        ID3D11UnorderedAccessView** _uavs = new ID3D11UnorderedAccessView * [_num_uavs_2d+ _num_uavs_3d];
+        {
+            for (int i = 0; i < _num_uavs_2d; i++)
+            {
+                _uavs[i] = lib3d::rendertarget2D_list[lua_rawgeti(L, 3, i+1)]->uav;
+            }
+
+            for (int i = 0; i < _num_uavs_3d; i++)
+            {
+                _uavs[i+ _num_uavs_2d] = lib3d::rendertarget3D_list[lua_rawgeti(L, 4, i + 1)]->uav;
+            }
+        }
+
+        lib3d::set_renders_and_uavs(_rtvs, _num_rtvs, _dsv, _uavs, _offset_uav, _num_uavs_2d + _num_uavs_3d);
+        
+        return 0;
     }
 
     static int clean_srv(lua_State* L)
@@ -1102,6 +1368,13 @@ namespace liblua
     {
         int _slot = lua_tointeger(L, 1);
         lib3d::clean_uav(_slot);
+        return 0;
+    }
+
+    static int clean_constantbuffers(lua_State* L)
+    {
+        int _slot = lua_tointeger(L, 1);
+        lib3d::clean_constantbuffers(_slot);
         return 0;
     }
 
@@ -1274,6 +1547,52 @@ namespace liblua
         customdatabuffer_main->unmap();
         return 0;
     }
+
+    static int load_mesh(lua_State* L)
+    {
+        const char* _label = lua_tostring(L, 1);
+
+        if (_label == "")
+        {
+            lua_pushinteger(L, -1);
+            return 1;
+        }
+
+        fastObjMesh* m = fast_obj_read(_label);
+        
+        int list_index = -1;
+        if (m != nullptr)
+        {
+            float* vert_array = new float[m->index_count * 8];
+            int* ind_array = new int[m->index_count];
+
+            for (int i = 0; i < m->index_count; i++)
+            {
+                vert_array[8 * i + 0] = m->positions[3 * m->indices[i].p + 0];
+                vert_array[8 * i + 1] = m->positions[3 * m->indices[i].p + 1];
+                vert_array[8 * i + 2] = m->positions[3 * m->indices[i].p + 2];
+
+                vert_array[8 * i + 3] = m->texcoords[2 * m->indices[i].t + 0];
+                vert_array[8 * i + 4] = m->texcoords[2 * m->indices[i].t + 1];
+
+                vert_array[8 * i + 5] = m->normals[3 * m->indices[i].n + 0];
+                vert_array[8 * i + 6] = m->normals[3 * m->indices[i].n + 1];
+                vert_array[8 * i + 7] = m->normals[3 * m->indices[i].n + 2];
+
+                ind_array[i] = i;
+            }
+
+
+            list_index = -1;
+            lib3d::Mesh* mesh = new lib3d::Mesh(vert_array, ind_array, (int)m->index_count * 8 * sizeof(float), (int)m->index_count * sizeof(int));
+            add_to_list(lib3d::mesh_list, mesh);
+        }
+        
+        lua_pushinteger(L, list_index);
+        return 1;
+    }
+
+#pragma endregion
 
     //Don't know if this would be the best way...but it is cool
     void push_functions()

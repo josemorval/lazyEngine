@@ -27,6 +27,8 @@ function init()
         end
     }
 
+
+    maindepth_texture = create_renderdepth2D(screenx,screeny)
     shadowmap_texture = create_renderdepth2D(screenx,screeny)
     standard_material = create_fx("./shaders/standard.hlsl", false)
     standardshadow_material = create_fx("./shaders/standard_shadow.hlsl", false)    
@@ -40,6 +42,8 @@ function init()
 
     gpuparticle_buffer = create_buffer(number_particles,36)
 
+    custom_mesh = load_mesh("./models/pig.obj")
+
     attach_uav_buffer(gpuparticle_buffer,2)
     use_computefx(gpuparticle_init)
     dispatch_computefx(gpuparticle_init,math.ceil(number_particles/64),1,1)
@@ -47,6 +51,7 @@ function init()
 end
   
 function imgui() 
+    
     imgui_setnextwindowsize(400,100)
     imgui_begin("GPU particles")
         local _newvalue = imgui_sliderint("Simulating particles",number_particles,500,1000000)
@@ -73,7 +78,7 @@ function render()
     attach_uav_buffer(gpuparticle_buffer,2)
       dispatch_computefx(gpuparticle_udpate,math.ceil(number_particles/64),1,1)
     clean_uav(2)
-
+    
     main_camera:use()
 
     render_scene()
@@ -87,8 +92,8 @@ function render_scene()
     set_depth_renderdepth2D(shadowmap_texture)
 
     clear_rendertarget_backbuffer(0.1,0.1,0.1,1.0)
-    clear_depth_depthmain()
-    set_rendertarget_and_depthmain_backbuffer()
+    clear_depth_renderdepth2D(maindepth_texture)
+    set_rendertarget_and_depth_backbuffer(maindepth_texture)
 
     set_translation_transform(0,0.0,-1.0,0.0)
     set_rotation_transform(0,0.0,1.0,0.0,0.0)
@@ -100,6 +105,17 @@ function render_scene()
     use_cube()
     use_fx(standard_material)
     draw_instances_cube(1)
+
+    set_translation_transform(0,0.0,0.0,0.0)
+    set_rotation_transform(0,0.0,1.0,0.0,global_t)
+    set_scale_transform(0,0.5,0.5,0.5)
+    update_transformbuffer()
+    
+    use_wireframe_rasterizer()
+    use_write_depthstencil()
+    use_mesh(custom_mesh)
+    use_fx(standard_material)
+    --draw_instances_mesh(custom_mesh,1)
 
     use_nocull_rasterizer()
     attach_srv_buffer(gpuparticle_buffer,2)

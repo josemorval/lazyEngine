@@ -39,14 +39,6 @@ struct Particle
 	int cellindex;
 };
 
-#define MAX_PARTICLE_ARRAY_SIZE 50
-struct CellGrid
-{
-	UINT particles_in_cell[MAX_PARTICLE_ARRAY_SIZE];
-	UINT particles_in_cell_max_count;
-	UINT particles_in_cell_current_count;
-};
-
 GlobalConstantsBuffer* gcb = nullptr;
 TransformBuffer* tb = nullptr;
 CustomDataBuffer* cdb = nullptr;
@@ -58,20 +50,27 @@ lib3d::Rasterizer* rasterizer_wireframe = nullptr;
 lib3d::AlphaBlending* alpha_blending;
 lib3d::DepthStencil* nowrite_depthstencil;
 lib3d::DepthStencil* write_depthstencil;
-lib3d::Backbuffer* rendertarget_main;
-lib3d::RenderDepth2D* depth_main;
+lib3d::RenderTarget2D* rendertarget_main;
 lib3d::Mesh* mesh_quad;
 lib3d::Mesh* mesh_cube;
 lib3d::Mesh* mesh_sphere;
-
 lib3d::ConstantBuffer* constantbuffer_main;
 lib3d::ConstantBuffer* transformbuffer_main;
 lib3d::ConstantBuffer* customdatabuffer_main;
 
+#ifdef _DEBUG
+lib3d::GPUTimer* gpu_timer;
+#endif
 
 void update_globalconstants()
 {	
-	gcb->delta_time = lib3d::global_time_use/1000.0;
+
+#ifdef _DEBUG
+	gcb->delta_time = lib3d::global_time_use / 1000.0;
+#else
+	gcb->delta_time = 0.016;
+#endif// DEBUG
+
 	gcb->global_time += gcb->delta_time;
 	
 	constantbuffer_main->map();
