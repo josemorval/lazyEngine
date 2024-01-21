@@ -35,8 +35,10 @@ SamplerState point_clamp_sampler
 cbuffer constants : register(b0)
 {
     float4x4 g_view_matrix;
+    float4x4 g_inv_view_matrix;
     float4x4 g_projection_matrix;
     float4x4 g_light_view_matrix;
+    float4x4 g_light_inv_view_matrix;
     float4x4 g_light_projection_matrix;
     float g_global_time;
     float g_delta_time;

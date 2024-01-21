@@ -22,6 +22,10 @@ extern "C" {
 #define FAST_OBJ_IMPLEMENTATION
 #include "fast_obj.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+
 #define UPDATE_SOFTERROR  lua_Debug ar;\
                           lua_getstack(L, 1, &ar);\
                           lua_getinfo(L, "nSl", &ar);\
@@ -428,7 +432,7 @@ namespace liblua
     {
         int _dimx = lua_tointeger(L, 1);
         int _dimy = lua_tointeger(L, 2);
-        ImGui::SetNextWindowSize(ImVec2(_dimx,_dimy));
+        ImGui::SetNextWindowSize(ImVec2(_dimx,_dimy), ImGuiCond_FirstUseEver);
         return 0;
     }
 
@@ -455,18 +459,72 @@ namespace liblua
         return 0;
     }
 
+    static int imgui_begintable(lua_State* L)
+    {
+        const char* _label = lua_tostring(L, 1);
+        int _columns = lua_tonumber(L, 2);
+
+        bool _b = ImGui::BeginTable(_label, _columns);
+        lua_pushboolean(L, _b);
+        return 1;
+    }
+
+    static int imgui_tablenextcolumn(lua_State* L)
+    {
+        ImGui::TableNextColumn();
+        return 0;
+    }
+
+    static int imgui_endtable(lua_State* L)
+    {
+        ImGui::EndTable();
+        return 0;
+    }
+
+    static int imgui_tableheadersrow(lua_State* L)
+    {
+        ImGui::TableHeadersRow();
+        return 0;
+    }
+
+    static int imgui_tablesetupcolum(lua_State* L)
+    {
+        const char* _label = lua_tostring(L, 1);
+        ImGui::TableSetupColumn(_label);
+        return 0;
+    }
+
     static int imgui_image_rendertarget2D(lua_State* L) {
         int index = lua_tointeger(L, 1);
         int dimx = lua_tointeger(L, 2);
-        int dimy = lua_tointeger(L, 2);
+        int dimy = lua_tointeger(L, 3);
+        const char* label = lua_tostring(L, 4);
         if (lib3d::rendertarget2D_list[index] != nullptr)
         {
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            libimgui::generate_chessboard_pattern(draw_list, dimx, dimy);
             draw_list->AddCallback(libimgui::point_sampler_callback, nullptr);
             draw_list->AddImage(lib3d::rendertarget2D_list[index]->srv, ImGui::GetCursorScreenPos(), ImVec2(ImGui::GetCursorScreenPos().x + dimx, ImGui::GetCursorScreenPos().y + dimy));
             draw_list->AddCallback(libimgui::linear_sampler_callback, nullptr);
-
+            ImGui::InvisibleButton(label, ImVec2(dimx, dimy));
         }
+        return 0;
+    }
+
+    static int imgui_image_texture2D(lua_State* L) {
+        int index = lua_tointeger(L, 1);
+        int dimx = lua_tointeger(L, 2);
+        int dimy = lua_tointeger(L, 3);
+        const char* label = lua_tostring(L, 4);
+        if (lib3d::texture2D_list[index] != nullptr) {
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            libimgui::generate_chessboard_pattern(draw_list, dimx, dimy);
+            draw_list->AddCallback(libimgui::point_sampler_callback, nullptr);
+            draw_list->AddImage(lib3d::texture2D_list[index]->srv, ImGui::GetCursorScreenPos(), ImVec2(ImGui::GetCursorScreenPos().x + dimx, ImGui::GetCursorScreenPos().y + dimy));
+            draw_list->AddCallback(libimgui::linear_sampler_callback, nullptr);
+            ImGui::InvisibleButton(label, ImVec2(dimx, dimy));
+        }
+
         return 0;
     }
 
@@ -474,16 +532,37 @@ namespace liblua
         int index = lua_tointeger(L, 1);
         int dimx = lua_tointeger(L, 2);
         int dimy = lua_tointeger(L, 3);
+        const char* label = lua_tostring(L, 4);
         if (lib3d::renderdepth2D_list[index] != nullptr)
         {
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            libimgui::generate_chessboard_pattern(draw_list, dimx, dimy);
             draw_list->AddCallback(libimgui::point_sampler_callback, nullptr);
             draw_list->AddImage(lib3d::renderdepth2D_list[index]->srv, ImGui::GetCursorScreenPos(), ImVec2(ImGui::GetCursorScreenPos().x + dimx, ImGui::GetCursorScreenPos().y + dimy));
             draw_list->AddCallback(libimgui::linear_sampler_callback, nullptr);
-
+            ImGui::InvisibleButton(label, ImVec2(dimx, dimy));
         }
         return 0;
     }
+
+    static int imgui_iskeypressed(lua_State* L)
+    {
+        int _key = lua_tonumber(L, 1);
+        bool _is_key_pressed = ImGui::IsKeyDown((ImGuiKey)_key);
+        lua_pushboolean(L, _is_key_pressed);
+        return 1;
+    }
+
+    static int imgui_getmousepos(lua_State* L)
+    {
+        float x = ImGui::GetMousePos().x;
+        float y = ImGui::GetMousePos().y;
+
+        lua_pushnumber(L, x);
+        lua_pushnumber(L, y);
+        return 2;
+    }
+    
 
 #pragma endregion
 #pragma region rendertarget2d bindings
@@ -1230,7 +1309,43 @@ namespace liblua
         float _dirz = lua_tonumber(L, 6);
 
         gcb->view_matrix = compute_view_matrix(float3(_x,_y,_z), float3(_x, _y, _z) + 0.1 * float3(_dirx, _diry, _dirz));
+        gcb->inv_view_matrix = compute_inv_view_matrix(float3(_x, _y, _z), float3(_x, _y, _z) + 0.1 * float3(_dirx, _diry, _dirz));
+
         return 0;
+    }
+
+    static int transform_point_camera(lua_State* L)
+    {
+        float _x = lua_tonumber(L, 1);
+        float _y = lua_tonumber(L, 2);
+        float _z = lua_tonumber(L, 3);
+        float _w = lua_tonumber(L, 4);
+
+        float4 _result = mul(float4(_x, _y, _z, _w), gcb->view_matrix);
+
+        lua_pushnumber(L, _result.x);
+        lua_pushnumber(L, _result.y);
+        lua_pushnumber(L, _result.z);
+        lua_pushnumber(L, _result.w);
+
+        return 4;
+    }
+
+    static int inv_transform_point_camera(lua_State* L)
+    {
+        float _x = lua_tonumber(L, 1);
+        float _y = lua_tonumber(L, 2);
+        float _z = lua_tonumber(L, 3);
+        float _w = lua_tonumber(L, 4);
+
+        float4 _result = mul(gcb->inv_view_matrix, float4(_x, _y, _z, _w));
+
+        lua_pushnumber(L, _result.x);
+        lua_pushnumber(L, _result.y);
+        lua_pushnumber(L, _result.z);
+        lua_pushnumber(L, _result.w);
+
+        return 4;
     }
 
     static int set_light_camera(lua_State* L)
@@ -1591,6 +1706,31 @@ namespace liblua
         lua_pushinteger(L, list_index);
         return 1;
     }
+
+    static int load_texture(lua_State* L)
+    {
+        const char* _label = lua_tostring(L, 1);
+
+        int channels;
+        int width;
+        int height;
+
+        stbi_uc* imageData = stbi_load(_label, &width, &height, &channels, STBI_rgb_alpha);
+
+        if (_label == "" || imageData==nullptr)
+        {
+            lua_pushinteger(L, -1);
+            return 1;
+        }
+
+        int list_index = -1;
+        lib3d:: Texture2D* texture2d = new lib3d::Texture2D(width, height, imageData);
+        add_to_list(lib3d::texture2D_list, texture2d);
+
+        lua_pushinteger(L, list_index);
+        return 1;
+    }
+
 
 #pragma endregion
 

@@ -62,8 +62,6 @@ void WinMainCRTStartup()
 #ifdef _DEBUG
 	//allocation(gpu_timer, lib3d::GPUTimer);
 #endif // DEBUG
-
-
 	//Constant buffer for store view and projection matrices and other thins
 	allocation(constantbuffer_main, lib3d::ConstantBuffer, sizeof(GlobalConstantsBuffer));
 
@@ -122,18 +120,17 @@ void WinMainCRTStartup()
 #ifdef _DEBUG
 		lib3d::start_global_timer();
 #endif
-
-
 		MSG msg;
 		while (PeekMessageA(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
 
 #ifdef _DEBUG
+
 			if (ImGui_ImplWin32_WndProcHandler(lib3d::window, msg.message, msg.wParam, msg.lParam)) {
 				continue;
 			}
-#endif // _DEBUG
 
+#endif // _DEBUG
 			// Control focus app behaviour
 			if (lib3d::window == GetForegroundWindow() && !lib3d::is_focused) lib3d::is_focused = true;//lib3d::swapchain->SetFullscreenState(true, nullptr);
 			if (lib3d::window != GetForegroundWindow() && lib3d::is_focused) lib3d::is_focused = false;
@@ -149,9 +146,6 @@ void WinMainCRTStartup()
 			TranslateMessage(&msg);
 			DispatchMessageA(&msg);
 		}
-
-
-		
 #ifdef _DEBUG
 		liblua::check_lua_changes();
 
@@ -271,6 +265,7 @@ void WinMainCRTStartup()
 			}
 
 			ImGui::Render();
+
 		}
 
 #endif // _DEBUG

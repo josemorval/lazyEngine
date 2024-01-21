@@ -9,8 +9,8 @@
 #ifdef _DEBUG
 #include <stdio.h>
 #include <string>
-#endif // _DEBUG
 #include <vector>
+#endif // _DEBUG
 
 
 
@@ -18,6 +18,7 @@ namespace lib3d
 { 
     //Forward declaration structs
     struct RenderDepth2D; 
+    struct Texture2D;
     struct RenderTarget2D;
     struct RenderTarget3D;
     struct Backbuffer;
@@ -1394,6 +1395,7 @@ namespace lib3d
 #define MAX_LIST_SIZE 20
 #define add_to_list(type_list, object) for (int i = 0; i < MAX_LIST_SIZE; i++) if (type_list[i] == nullptr) { type_list[i] = object; list_index = i; break; }
     RenderDepth2D* renderdepth2D_list[MAX_LIST_SIZE];
+    Texture2D* texture2D_list[MAX_LIST_SIZE];
     RenderTarget2D* rendertarget2D_list[MAX_LIST_SIZE];
     RenderTarget3D* rendertarget3D_list[MAX_LIST_SIZE];
     Buffer* buffer_list[MAX_LIST_SIZE];
@@ -1464,6 +1466,55 @@ namespace lib3d
             rendertarget = nullptr;
         }
     };
+
+    struct Texture2D
+    {
+        ID3D11Texture2D* texture;
+        ID3D11ShaderResourceView* srv;
+
+        Texture2D() : texture(nullptr), srv(nullptr) {}
+
+        Texture2D(int _width, int _height, unsigned char* _initial_data)
+        {
+            D3D11_TEXTURE2D_DESC textureDesc = {};
+            textureDesc.Width = _width;
+            textureDesc.Height = _height;
+            textureDesc.MipLevels = 1;
+            textureDesc.ArraySize = 1;
+            textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            textureDesc.SampleDesc.Count = 1;
+            textureDesc.SampleDesc.Quality = 0;
+            textureDesc.Usage = D3D11_USAGE_DEFAULT;
+            textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+            textureDesc.CPUAccessFlags = 0;
+            textureDesc.MiscFlags = 0;
+
+
+            D3D11_SUBRESOURCE_DATA initialData;
+
+            initialData.pSysMem = _initial_data;
+            initialData.SysMemPitch = 4*_width;
+            device->CreateTexture2D(&textureDesc, &initialData, &texture);
+            device->CreateShaderResourceView(texture, nullptr, &srv);
+        }
+
+        void attach_srv(int _slot)
+        {
+            inmediate->VSSetShaderResources(_slot, 1, &srv);
+            inmediate->GSSetShaderResources(_slot, 1, &srv);
+            inmediate->PSSetShaderResources(_slot, 1, &srv);
+            inmediate->CSSetShaderResources(_slot, 1, &srv);
+        }
+
+        void release()
+        {
+            srv->Release();
+            srv = nullptr;
+            texture->Release();
+            texture = nullptr;
+        }
+    };
+
     struct RenderTarget2D
     {
         ID3D11Texture2D* rendertarget;
@@ -2298,7 +2349,7 @@ namespace lib3d
     void setup_device(HINSTANCE handle_instance)
         {
 
-            WIDTH = 960 * 3 / 3; HEIGHT = 540 * 3 / 3;
+            WIDTH = 960 * 3 / 2; HEIGHT = 540 * 3 / 2;
 
             DXGI_SWAP_CHAIN_DESC swap_chain_desc = {};
             swap_chain_desc.BufferCount = 1;
@@ -2342,7 +2393,16 @@ namespace lib3d
 #else
             ShowCursor(true);
 #endif
+            RECT clientRect;
+            GetClientRect(window, &clientRect);
+
+            WIDTH = clientRect.right - clientRect.left;
+            HEIGHT = clientRect.bottom - clientRect.top;
+
+            swap_chain_desc.BufferDesc.Width = WIDTH;
+            swap_chain_desc.BufferDesc.Height = HEIGHT;
             swap_chain_desc.OutputWindow = window;
+
             D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, D3D11_CREATE_DEVICE_DEBUG, 0, 0, D3D11_SDK_VERSION, (DXGI_SWAP_CHAIN_DESC*)&swap_chain_desc, &swapchain, &device, NULL, &inmediate);
 
             
@@ -2371,6 +2431,17 @@ namespace lib3d
             QueryPerformanceFrequency(&li_timerfrequency);
 #endif // _DEBUG
         }
+
+    bool is_fullscreen()
+    {
+        RECT a, b;
+        GetWindowRect(window, &a);
+        GetWindowRect(GetDesktopWindow(), &b);
+        return (a.left == b.left &&
+            a.top == b.top &&
+            a.right == b.right &&
+            a.bottom == b.bottom);
+    }
     
     void clean_srv(int _slot)
     {
@@ -2421,6 +2492,7 @@ namespace lib3d
         for (int i = 0; i < MAX_LIST_SIZE; i++)
         {
             if (renderdepth2D_list[i] != nullptr) renderdepth2D_list[i]->release(), renderdepth2D_list[i] = nullptr;
+            if (texture2D_list[i] != nullptr) texture2D_list[i]->release(), texture2D_list[i] = nullptr;
             if (rendertarget2D_list[i] != nullptr) rendertarget2D_list[i]->release(), rendertarget2D_list[i] = nullptr;
             if (rendertarget3D_list[i] != nullptr) rendertarget3D_list[i]->release(), rendertarget3D_list[i] = nullptr;
             if (buffer_list[i] != nullptr) buffer_list[i]->release(), buffer_list[i] = nullptr;

@@ -5,6 +5,7 @@
 
 #include <windows.h>
 #include <commdlg.h>
+#include "lib3d.h"
 
 #include "imgui.h"
 #include "imgui_impl_win32.h"
@@ -172,6 +173,31 @@ namespace libimgui
         lib3d::inmediate->PSSetSamplers(0, 1, &pSamplerState);
     }
 
+	void generate_chessboard_pattern(ImDrawList* cmd_list, int dimx, int dimy)
+	{
+		int checkerSize = 8;
+
+		int numSquaresX = dimx / checkerSize;
+		int numSquaresY = dimy / checkerSize;
+
+		int lastRowSize = dimy % checkerSize;
+		int lastColSize = dimx % checkerSize;
+
+		ImU32 color1 = IM_COL32(200, 200, 200, 50); 
+		ImU32 color2 = IM_COL32(100, 100, 100, 50); 
+
+		for (int y = 0; y <= numSquaresY; ++y) {
+			for (int x = 0; x <= numSquaresX; ++x) {
+				int currentSize = (x < numSquaresX || x == 0) ? checkerSize : lastColSize;
+				int currentHeight = (y < numSquaresY || y == 0) ? checkerSize : lastRowSize;
+
+				ImVec2 squarePos = ImVec2(ImGui::GetCursorScreenPos().x + x * checkerSize, ImGui::GetCursorScreenPos().y + y * checkerSize);
+				ImU32 color = (x + y) % 2 == 0 ? color1 : color2;
+				cmd_list->AddRectFilled(squarePos, ImVec2(squarePos.x + currentSize, squarePos.y + currentHeight), color);
+			}
+		}
+	}
+
 	void draw_shader_error_square()
 	{
 		ImDrawList* drawList = ImGui::GetBackgroundDrawList();
@@ -195,4 +221,7 @@ namespace libimgui
 
 		drawList->AddRectFilled(squarePos, ImVec2(squarePos.x + squareSize.x, squarePos.y + squareSize.y), IM_COL32(100, 0, 255, (int)(alpha * 255)));
 	}
+
+
 }
+

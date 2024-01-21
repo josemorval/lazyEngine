@@ -4,3 +4,8 @@ release
 *.obj
 native_release
 tools/backup/geo_builder_bak1.hip
+*.asm
+*.jpg
+*.png
+*.obj
+*.obj

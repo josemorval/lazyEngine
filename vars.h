@@ -10,8 +10,10 @@ float BACKGROUND_COL[4] = { 0.1,0.1,0.1,1.0 };
 
 struct GlobalConstantsBuffer {
 	float4x4 view_matrix;
+	float4x4 inv_view_matrix;
 	float4x4 projection_matrix;
 	float4x4 light_view_matrix;
+	float4x4 light_inv_view_matrix;
 	float4x4 light_projection_matrix;
 	float global_time;
 	float delta_time;
@@ -76,8 +78,10 @@ void update_globalconstants()
 	constantbuffer_main->map();
 		GlobalConstantsBuffer* _gcb = (GlobalConstantsBuffer*)constantbuffer_main->get_data();
 		_gcb->view_matrix = gcb->view_matrix;
+		_gcb->inv_view_matrix = gcb->inv_view_matrix;
 		_gcb->projection_matrix = gcb->projection_matrix;
 		_gcb->light_view_matrix = gcb->light_view_matrix;
+		_gcb->light_inv_view_matrix = gcb->light_inv_view_matrix;
 		_gcb->light_projection_matrix = gcb->light_projection_matrix;
 		_gcb->global_time = gcb->global_time;
 		_gcb->delta_time = gcb->delta_time;

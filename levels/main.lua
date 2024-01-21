@@ -47,7 +47,12 @@ function init()
     attach_uav_buffer(gpuparticle_buffer,2)
     use_computefx(gpuparticle_init)
     dispatch_computefx(gpuparticle_init,math.ceil(number_particles/64),1,1)
-    clean_uav(2)    
+    clean_uav(2)   
+    
+    
+    my_tex = load_texture("./textures/link-hero.png")
+    my_tex2 = load_texture("./textures/zelda.jpg")
+
 end
   
 function imgui() 
@@ -67,6 +72,31 @@ function imgui()
         number_particles_drawing = imgui_sliderint("Drawing particles",number_particles_drawing,500,1000000)
 
     imgui_end()
+
+    imgui_setnextwindowsize(300,300)
+    imgui_begin("Texture viewer")
+
+    imgui_image_texture2D(my_tex1,100,100,"img")
+    imgui_image_texture2D(my_tex2,200,100,"img2")
+    imgui_end()
+
+    imgui_begin("Inputs")
+
+    if imgui_iskeypressed(546) then
+        imgui_text("Presiono A")
+    end
+
+    local x,y,z,w = inv_transform_point_camera(0,0,0,1)
+    x = string.format("%.2f",x)
+    y = string.format("%.2f",y)
+    z = string.format("%.2f",z)
+    w = string.format("%.2f",w)
+    
+    imgui_text(tostring(x) .. " " .. tostring(y) .. " " .. tostring(z) .. " " .. tostring(w))
+
+    imgui_end()
+
+
 
 end  
 
@@ -115,7 +145,7 @@ function render_scene()
     use_write_depthstencil()
     use_mesh(custom_mesh)
     use_fx(standard_material)
-    --draw_instances_mesh(custom_mesh,1)
+    draw_instances_mesh(custom_mesh,1)
 
     use_nocull_rasterizer()
     attach_srv_buffer(gpuparticle_buffer,2)

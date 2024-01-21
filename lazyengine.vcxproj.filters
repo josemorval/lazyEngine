@@ -60,6 +60,9 @@
     <ClInclude Include="obj_loader\fast_obj.h">
       <Filter>obj_loader</Filter>
     </ClInclude>
+    <ClInclude Include="imgui\stb_image.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="app.ico" />

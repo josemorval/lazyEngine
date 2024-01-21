@@ -159,6 +159,11 @@ float4 normalize(float4& v) { return v/length(v); }
 float2 mul(float2x2& m, float2& v) { return float2(dot(m.row(0), v), dot(m.row(1), v));}
 float3 mul(float3x3& m, float3& v) { return float3(dot(m.row(0), v), dot(m.row(1), v), dot(m.row(2), v)); }
 float4 mul(float4x4& m, float4& v) { return float4(dot(m.row(0), v), dot(m.row(1), v), dot(m.row(2), v), dot(m.row(3), v)); }
+
+float2 mul(float2& v,float2x2& m) { return float2(dot(m.column(0), v), dot(m.column(1), v)); }
+float3 mul(float3& v,float3x3& m) { return float3(dot(m.column(0), v), dot(m.column(1), v), dot(m.column(2), v)); }
+float4 mul(float4& v,float4x4& m) { return float4(dot(m.column(0), v), dot(m.column(1), v), dot(m.column(2), v), dot(m.column(3), v)); }
+
 float2x2 mul(float2x2& m1, float2x2& m2) { float2x2 m = float2x2();  for (int i = 0; i < 2; i++) for (int j = 0; j < 2; j++) m.set(i, j, dot(m1.row(i), m2.column(j))); return m; }
 float3x3 mul(float3x3& m1, float3x3& m2) { float3x3 m = float3x3();  for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) m.set(i, j, dot(m1.row(i), m2.column(j))); return m; }
 float4x4 mul(float4x4& m1, float4x4& m2) { float4x4 m = float4x4();  for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) m.set(i, j, dot(m1.row(i), m2.column(j))); return m; }
@@ -183,6 +188,28 @@ float4x4 compute_view_matrix(float3 _position_camera, float3 _view_point) {
 	};
 
 	return view_matrix;
+}
+
+float4x4 compute_inv_view_matrix(float3 _position_camera, float3 _view_point) {
+
+	float3 up = { 0.0f,1.0f,0.0f };
+	float3 forward = _view_point - _position_camera;
+	forward = normalize(forward);
+	float3 right = normalize(cross(up, forward));
+	float3 newUp = normalize(cross(forward, right));
+
+	float aa = -dot(right, _position_camera);
+	float bb = -dot(newUp, _position_camera);
+	float cc = -dot(forward, _position_camera);
+
+	float4x4 inv_view_matrix = {
+			right.x,    right.y,    right.z,    _position_camera.x,
+			newUp.x,    newUp.y,    newUp.z,    _position_camera.y,
+			forward.x,    forward.y,    forward.z,    _position_camera.z,
+			0.0f,	0.0f,	0.0f,   1.0f
+	};
+
+	return inv_view_matrix;
 }
 
 float4x4 compute_orthographic_matrix(float _width, float _height, float _znear, float _zfar) {
