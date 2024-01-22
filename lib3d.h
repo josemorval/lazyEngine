@@ -1970,7 +1970,7 @@ namespace lib3d
         {
             vs->Release();
             vs = nullptr;
-            if (use_geo_shader) gs->Release(), gs = nullptr;
+            if(gs!=nullptr) gs->Release(), gs = nullptr;
             ps->Release();
             ps = nullptr;
         }

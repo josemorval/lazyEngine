@@ -227,15 +227,13 @@ namespace liblua
         if (_label == nullptr || lua_isnoneornil(L, 1))
         {
             UPDATE_SOFTERROR
-            bool result = ImGui::Begin("undefined");
-            lua_pushboolean(L, result);
-            return 1;
+            ImGui::Begin("undefined");
+            return 0;
         }
         else
         {
-            bool result = ImGui::Begin(_label);
-            lua_pushboolean(L, result);
-            return 1;
+            ImGui::Begin(_label);
+            return 0;
         }
     }
 
@@ -1314,40 +1312,6 @@ namespace liblua
         return 0;
     }
 
-    static int transform_point_camera(lua_State* L)
-    {
-        float _x = lua_tonumber(L, 1);
-        float _y = lua_tonumber(L, 2);
-        float _z = lua_tonumber(L, 3);
-        float _w = lua_tonumber(L, 4);
-
-        float4 _result = mul(float4(_x, _y, _z, _w), gcb->view_matrix);
-
-        lua_pushnumber(L, _result.x);
-        lua_pushnumber(L, _result.y);
-        lua_pushnumber(L, _result.z);
-        lua_pushnumber(L, _result.w);
-
-        return 4;
-    }
-
-    static int inv_transform_point_camera(lua_State* L)
-    {
-        float _x = lua_tonumber(L, 1);
-        float _y = lua_tonumber(L, 2);
-        float _z = lua_tonumber(L, 3);
-        float _w = lua_tonumber(L, 4);
-
-        float4 _result = mul(gcb->inv_view_matrix, float4(_x, _y, _z, _w));
-
-        lua_pushnumber(L, _result.x);
-        lua_pushnumber(L, _result.y);
-        lua_pushnumber(L, _result.z);
-        lua_pushnumber(L, _result.w);
-
-        return 4;
-    }
-
     static int set_light_camera(lua_State* L)
     {
         float _x = lua_tonumber(L, 1);
@@ -1358,6 +1322,7 @@ namespace liblua
         float _dirz = lua_tonumber(L, 6);
 
         gcb->light_view_matrix = compute_view_matrix(float3(_x, _y, _z), float3(_x, _y, _z) + 0.1 * float3(_dirx, _diry, _dirz));
+        gcb->light_inv_view_matrix = compute_inv_view_matrix(float3(_x, _y, _z), float3(_x, _y, _z) + 0.1 * float3(_dirx, _diry, _dirz));
         return 0;
     }
 
@@ -1403,6 +1368,40 @@ namespace liblua
 
         gcb->light_projection_matrix = compute_orthographic_matrix(_width, _height, _znear, _zfar);
         return 0;
+    }
+
+    static int transform_point_camera(lua_State* L)
+    {
+        float _x = lua_tonumber(L, 1);
+        float _y = lua_tonumber(L, 2);
+        float _z = lua_tonumber(L, 3);
+        float _w = lua_tonumber(L, 4);
+
+        float4 _result = mul(float4(_x, _y, _z, _w), gcb->view_matrix);
+
+        lua_pushnumber(L, _result.x);
+        lua_pushnumber(L, _result.y);
+        lua_pushnumber(L, _result.z);
+        lua_pushnumber(L, _result.w);
+
+        return 4;
+    }
+
+    static int inv_transform_point_camera(lua_State* L)
+    {
+        float _x = lua_tonumber(L, 1);
+        float _y = lua_tonumber(L, 2);
+        float _z = lua_tonumber(L, 3);
+        float _w = lua_tonumber(L, 4);
+
+        float4 _result = mul(gcb->inv_view_matrix, float4(_x, _y, _z, _w));
+
+        lua_pushnumber(L, _result.x);
+        lua_pushnumber(L, _result.y);
+        lua_pushnumber(L, _result.z);
+        lua_pushnumber(L, _result.w);
+
+        return 4;
     }
 
     static int create_particle_buffer(lua_State* L)
@@ -1629,8 +1628,10 @@ namespace liblua
         constantbuffer_main->map();
         GlobalConstantsBuffer* _gcb = (GlobalConstantsBuffer*)constantbuffer_main->get_data();
         _gcb->view_matrix = gcb->view_matrix;
+        _gcb->inv_view_matrix = gcb->inv_view_matrix;
         _gcb->projection_matrix = gcb->projection_matrix;
         _gcb->light_view_matrix = gcb->light_view_matrix;
+        _gcb->light_inv_view_matrix = gcb->light_inv_view_matrix;
         _gcb->light_projection_matrix = gcb->light_projection_matrix;
         _gcb->global_time = gcb->global_time;
         _gcb->delta_time = gcb->delta_time;

@@ -176,8 +176,19 @@ void WinMainCRTStartup()
 					ImGui::MenuItem("Lua reference", nullptr, &show_lua_reference_window);
 				ImGui::EndMenu();
 				}
-				ImGui::SameLine(lib3d::WIDTH/2.0 - ImGui::CalcTextSize("____________________").x/2.0); // Ajusta la posición X según tus necesidades
+				ImGui::SameLine(lib3d::WIDTH/2.0 - ImGui::CalcTextSize("____________________").x/2.0); 
 				ImGui::Text("[ %.2f ms ] %d x %d",lib3d::global_time_use, lib3d::WIDTH, lib3d::HEIGHT);
+
+				{
+					size_t pos = liblua::lua_filename_level.find_last_of("\\/");
+					std::string only_filename = "";
+					if (pos != std::wstring::npos) {
+						only_filename = liblua::lua_filename_level.substr(pos + 1);
+					}
+					ImGui::SameLine(lib3d::WIDTH-ImGui::CalcTextSize(only_filename.c_str()).x-20);
+					ImGui::Text("%s", only_filename.c_str());
+				}
+
 
 				ImGui::EndMainMenuBar();
 			}
@@ -271,13 +282,15 @@ void WinMainCRTStartup()
 #endif // _DEBUG
 
 		update_globalconstants();
-		rendertarget_main->clear_rendertarget(BACKGROUND_COL);
 
 #ifdef _DEBUG
 		//Lua based render
 		liblua::render();
 
-		if (lua_failed) rendertarget_main->clear_rendertarget(BACKGROUND_COL);
+		if (lua_failed)
+		{
+			rendertarget_main->clear_rendertarget(BACKGROUND_COL);
+		}
 #endif
 
 		rendertarget_main->set_rendertarget();

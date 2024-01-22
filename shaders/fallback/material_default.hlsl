@@ -7,7 +7,7 @@ struct VS_INPUT {
 };
 
 struct VS_OUTPUT {
-    float4 position : SV_POSITION;
+    float4 position : POSITION;
     float2 texcoord : TEXCOORD0;
     float3 normal : NORMAL;
 };
@@ -19,7 +19,7 @@ struct GS_INPUT {
 };
 
 struct PS_INPUT {
-    float4 position : POSITION;
+    float4 position : SV_POSITION;
     float2 texcoord : TEXCOORD0;
     float3 normal : NORMAL;
 };
@@ -46,6 +46,7 @@ void gs_main(triangle GS_INPUT input[3], inout TriangleStream<PS_INPUT> triStrea
 
         triStream.Append(output);
     }
+    triStream.RestartStrip();
 }
 
 float4 ps_main(PS_INPUT i) : SV_TARGET

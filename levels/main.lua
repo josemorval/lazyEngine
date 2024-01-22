@@ -1,24 +1,24 @@
-
+require("lualibs.vec")
 
 function init()
 
+    -- get some system variables
     global_t = get_time()
-    delta_t = 3.0 * get_delta_time()
+    delta_t = get_delta_time()
     screenx,screeny = get_window_size()
-    main_camera = {
-        eye = Vector.new(0.0,0.0,-3.0),
-        dir = Vector.new(0.0,0.0,1.0),
-        lighteye = Vector.new(1.0,1.0,1.0),
-        lightdir = Vector.new(-1.0,-1.0,-1.0),
     
+    -- setup a canera together with a directional light
+    main_camera = {
+        eye = vec.new(0.0,0.0,0.0),
+        dir = vec.new(0.0,0.0,0.0),
+        lighteye = vec.new(0.001,1.0,0.001),
+        lightdir = vec.new(0.0,0.0,0.0),
         use = function(self)
-            self.eye = Vector.new(4.0*math.cos(0.2*global_t),2.0,4.0*math.sin(0.2*global_t))
-            self.dir = Vector.mul(-1.0,Vector.normalize(self.eye))
-            self.eye.y = self.eye.y - 1.0
-
-            self.lighteye = Vector.new(1.0,1.0,1.0)
-            self.lightdir = Vector.mul(-1.0,Vector.normalize(self.lighteye))
-                        
+            local q = 0.8+0.5*math.sin(0.2*global_t)
+            self.eye = vec.new(-5*math.cos(q),2,5*math.sin(q))    
+            self.dir = vec.mul(-1.0,vec.normalize(self.eye))
+            self.lightdir = vec.mul(-1.0,vec.normalize(self.lighteye))
+            
             set_camera(self.eye.x,self.eye.y,self.eye.z,self.dir.x,self.dir.y,self.dir.z)
             set_perspective(1.0,screenx/screeny,0.1,50.0)   
             set_light_camera(self.lighteye.x,self.lighteye.y,self.lighteye.z,self.lightdir.x,self.lightdir.y,self.lightdir.z)
@@ -27,131 +27,59 @@ function init()
         end
     }
 
-
+    -- create depth texture
     maindepth_texture = create_renderdepth2D(screenx,screeny)
-    shadowmap_texture = create_renderdepth2D(screenx,screeny)
-    standard_material = create_fx("./shaders/standard.hlsl", false)
-    standardshadow_material = create_fx("./shaders/standard_shadow.hlsl", false)    
-    geoquad_material = create_fx("./shaders/geoquad_material.hlsl", true)    
-
-    gpuparticle_init = create_computefx("./shaders/compute_particle.cs", "init")
-    gpuparticle_udpate = create_computefx("./shaders/compute_particle.cs", "update")
     
-    number_particles = 500
-    number_particles_drawing = 500
+    -- standard material
+    standard_material = create_fx("./shaders/basic/standard.hlsl", false)
 
-    gpuparticle_buffer = create_buffer(number_particles,36)
+    -- create two entities, two cubes. one moving and the other as a ground
+    cube = create_cube()
+    ground = create_cube()
 
-    custom_mesh = load_mesh("./models/pig.obj")
-
-    attach_uav_buffer(gpuparticle_buffer,2)
-    use_computefx(gpuparticle_init)
-    dispatch_computefx(gpuparticle_init,math.ceil(number_particles/64),1,1)
-    clean_uav(2)   
+    -- imgui variables to compute light direction
+    light_angle1=0.5
+    light_angle2=0.5
     
-    
-    my_tex = load_texture("./textures/link-hero.png")
-    my_tex2 = load_texture("./textures/zelda.jpg")
-
 end
   
+-- directional light controller
 function imgui() 
-    
-    imgui_setnextwindowsize(400,100)
-    imgui_begin("GPU particles")
-        local _newvalue = imgui_sliderint("Simulating particles",number_particles,500,1000000)
-        if _newvalue ~= number_particles then
-            number_particles = _newvalue
-            destroy_buffer(gpuparticle_buffer)
-            gpuparticle_buffer = create_buffer(number_particles,36)
-            attach_uav_buffer(gpuparticle_buffer,2)
-            use_computefx(gpuparticle_init)
-            dispatch_computefx(gpuparticle_init,math.ceil(number_particles/64),1,1)
-            clean_uav(2)  
-        end
-        number_particles_drawing = imgui_sliderint("Drawing particles",number_particles_drawing,500,1000000)
-
+    imgui_setnextwindowsize(400,80)
+    imgui_begin("Inspector")
+    light_angle1, light_angle2 = imgui_sliderfloat2("Light direction",light_angle1,light_angle2,-2,2)
+    main_camera.lighteye = vec.new(
+        math.cos(light_angle1)*math.sin(light_angle2),
+        math.cos(light_angle2),
+        math.sin(light_angle1)*math.sin(light_angle2)
+    )
     imgui_end()
-
-    imgui_setnextwindowsize(300,300)
-    imgui_begin("Texture viewer")
-
-    imgui_image_texture2D(my_tex1,100,100,"img")
-    imgui_image_texture2D(my_tex2,200,100,"img2")
-    imgui_end()
-
-    imgui_begin("Inputs")
-
-    if imgui_iskeypressed(546) then
-        imgui_text("Presiono A")
-    end
-
-    local x,y,z,w = inv_transform_point_camera(0,0,0,1)
-    x = string.format("%.2f",x)
-    y = string.format("%.2f",y)
-    z = string.format("%.2f",z)
-    w = string.format("%.2f",w)
-    
-    imgui_text(tostring(x) .. " " .. tostring(y) .. " " .. tostring(z) .. " " .. tostring(w))
-
-    imgui_end()
-
-
-
 end  
 
+-- main logic loop
 function render()
     global_t = get_time()
-    delta_t = 3.0 * get_delta_time()
-
-    use_computefx(gpuparticle_udpate)
-    attach_uav_buffer(gpuparticle_buffer,2)
-      dispatch_computefx(gpuparticle_udpate,math.ceil(number_particles/64),1,1)
-    clean_uav(2)
-    
+    delta_t = 3.0 * get_delta_time()    
     main_camera:use()
-
     render_scene()
 end
 
+-- here we setup the scene elements to be renderered
 function render_scene()    
-
     use_viewport(0,0,screenx,screeny)
-
-    clear_depth_renderdepth2D(shadowmap_texture)
-    set_depth_renderdepth2D(shadowmap_texture)
 
     clear_rendertarget_backbuffer(0.1,0.1,0.1,1.0)
     clear_depth_renderdepth2D(maindepth_texture)
     set_rendertarget_and_depth_backbuffer(maindepth_texture)
 
-    set_translation_transform(0,0.0,-1.0,0.0)
-    set_rotation_transform(0,0.0,1.0,0.0,0.0)
-    set_scale_transform(0,2.0,0.2,2.0)
-    update_transformbuffer()
-    
-    use_rasterizer()
-    use_write_depthstencil()
-    use_cube()
-    use_fx(standard_material)
-    draw_instances_cube(1)
+    -- a rotating cube
+    cube.rotation = vec.new(math.sin(global_t),1.0,math.cos(global_t),1.3*global_t)
+    cube:draw()    
 
-    set_translation_transform(0,0.0,0.0,0.0)
-    set_rotation_transform(0,0.0,1.0,0.0,global_t)
-    set_scale_transform(0,0.5,0.5,0.5)
-    update_transformbuffer()
-    
-    use_wireframe_rasterizer()
-    use_write_depthstencil()
-    use_mesh(custom_mesh)
-    use_fx(standard_material)
-    draw_instances_mesh(custom_mesh,1)
-
-    use_nocull_rasterizer()
-    attach_srv_buffer(gpuparticle_buffer,2)
-    use_fx(geoquad_material)
-    emit_vertex(number_particles_drawing,1)
-    clean_srv(2)
+    -- a ground
+    ground.position = vec.new(0.0,-1.0,0.0)
+    ground.scale = vec.new(5.0,0.2,5.0)
+    ground:draw()
 
 end
 
@@ -159,36 +87,24 @@ end
 function cleanup()
 end
 
+
 ---------------------
--- Mini vector lib --
+-- Helpers ----------
 ---------------------
-Vector = {}
-
-function Vector.new(x, y, z)
-    local vec = {x = x or 0, y = y or 0, z = z or 0}
-    setmetatable(vec, {__index = Vector})
-    return vec
-end
-
-function Vector.add(a, b)
-    a.x = a.x + b.x
-    a.y = a.y + b.y
-    a.z = a.y + b.y
-end
-
-function Vector.substract(a, b)
-    return Vector.new(a.x + b.x, a.y + b.y, a.z + b.z)
-end
-
-function Vector.normalize(v)
-    local lq = math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z)
-    return Vector.new(v.x/lq,v.y/lq,v.z/lq)
-end
-
-function Vector.mul(s,v)
-    local q = Vector.new(0,0,0)
-    q.x = s*v.x
-    q.y = s*v.y
-    q.z = s*v.z
-    return q
+function create_cube()
+    return {
+        position = vec.new(0,0,0),
+        rotation = vec.new(0,1,0,1),
+        scale = vec.new(1,1,1), 
+        draw = function(self)
+            use_rasterizer()
+            use_fx(standard_material)
+            use_cube()
+            set_translation_transform(0,self.position.x,self.position.y,self.position.z)
+            set_rotation_transform(0,self.rotation.x,self.rotation.y,self.rotation.z,self.rotation.w)
+            set_scale_transform(0,self.scale.x,self.scale.y,self.scale.z)
+            update_transformbuffer()
+            draw_instances_cube(1)
+        end
+    }
 end

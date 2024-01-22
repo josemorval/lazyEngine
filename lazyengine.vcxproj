@@ -129,7 +129,7 @@
       </AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /E /I /Y "$(ProjectDir)shaders" "$(TargetDir)shaders" &amp;&amp; xcopy /E /I /Y  "$(ProjectDir)levels" "$(TargetDir)levels"  &amp;&amp; xcopy /E /I /Y  "$(ProjectDir)fonts" "$(TargetDir)fonts"</Command>
+      <Command>xcopy /E /I /Y "$(ProjectDir)shaders" "$(TargetDir)shaders" &amp;&amp; xcopy /E /I /Y "$(ProjectDir)lualibs" "$(TargetDir)lualibs" &amp;&amp; xcopy /E /I /Y  "$(ProjectDir)levels" "$(TargetDir)levels"  &amp;&amp; xcopy /E /I /Y  "$(ProjectDir)fonts" "$(TargetDir)fonts"</Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>python ./luabindings.py</Command>
