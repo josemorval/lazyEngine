@@ -88,7 +88,7 @@
     flex-direction: column;
     flex-wrap: wrap;
     max-width: 100%;
-    height: 1500px;;
+    height: 2000px;;
 }
 
 section {
@@ -424,7 +424,194 @@ section {
                 <h4> update and submit to gpu the current constant buffer  </h4>
             </div>
         </section>
+
+        <section>
+            <h2>FX</h2>
+            <div class="ind">
+                <h3> index = create_fx( path, has_geometry_shader ) </h3>
+                <h4> create a shader (vertex, fragment and/or geometry) from a given file in a path. return the index of the element </h4>
+            </div>
+            <div class="ind">
+                <h3> destroy_fx( index ) </h3>
+                <h4> destroy a shader element </h4>
+            </div>
+            <div class="ind">
+                <h3> use_fx( index ) </h3>
+                <h4> set the given shader element as active </h4>
+            </div>
+        </section>
+
+        <section>
+            <h2>Compute FX</h2>
+            <div class="ind">
+                <h3> index = create_computefx( path, kernel ) </h3>
+                <h4> create a compute shader (for a kernel) from a given file in a path. return the index of the element </h4>
+            </div>
+            <div class="ind">
+                <h3> destroy_computefx( index ) </h3>
+                <h4> destroy a compute shader element </h4>
+            </div>
+            <div class="ind">
+                <h3> use_computefx( index ) </h3>
+                <h4> set the given compute shader element as active </h4>
+            </div>
+            <div class="ind">
+                <h3> use_dispatchfx( index, workgroup_x, workgroup_y, workgroup_z ) </h3>
+                <h4> run a compute shader from a given number of thread groups (workgroup times threads, defined in the shader file) </h4>
+            </div>
+        </section>
+
+        <section>
+            <h2>Viewport</h2>
+            <div class="ind">
+                <h3> use_viewport( offset_x, offset_y, width, height ) </h3>
+                <h4> set and use a viewport </h4>
+            </div>
+        </section>
         
+        <section>
+            <h2>Rasterizer</h2>
+            <div class="ind">
+                <h3> use_rasterizer() </h3>
+                <h4> use a default rasterizer with front cull and fill solid </h4>
+            </div>
+            <div class="ind">
+                <h3> use_nocull_rasterizer() </h3>
+                <h4> use a rasterizer with no cull and fill solid </h4>
+            </div>
+            <div class="ind">
+                <h3> use_wireframe_rasterizer() </h3>
+                <h4> use a rasterizer with no cull and fill wireframe </h4>
+            </div>
+        </section>
+
+        <section>
+            <h2>Blending</h2>
+            <div class="ind">
+                <h3> use_alphablending() </h3>
+                <h4> set alpha blending mode for rendering </h4>
+            </div>
+            <div class="ind">
+                <h3> clear_alphablending() </h3>
+                <h4> set opaque mode for rendering </h4>
+            </div>
+        </section>
+
+        <section>
+            <h2>Depth Stencil</h2>
+            <div class="ind">
+                <h3> use_nowrite_depthstencil() </h3>
+                <h4> draw comparing with depth but not writing in the depth buffer </h4>
+            </div>
+            <div class="ind">
+                <h3> use_write_depthstencil() </h3>
+                <h4> draw comparing with depth and writing in the depth buffer </h4>
+            </div>
+            <div class="ind">
+                <h3> clear_depthstencil() </h3>
+                <h4> draw without comparing with depth and writing to depth buffer </h4>
+            </div>
+        </section>
+        
+        <section>
+            <h2>Mesh</h2>
+            <div class="ind">
+                <h3> use_mesh( index ) </h3>
+                <h4> prepare a mesh to be drawn in a next stage </h4>
+            </div>
+            <div class="ind">
+                <h3> draw_mesh( index ) </h3>
+                <h4> draw a mesh </h4>
+            </div>
+            <div class="ind">
+                <h3> draw_instances_mesh( index, instances ) </h3>
+                <h4> draw several copies of a mesh </h4>
+            </div>
+            <div class="ind">
+                <h3> n = vertices_count_mesh( index ) </h3>
+                <h4> return the number of unique vertices of a mesh </h4>
+            </div>
+            <div class="ind">
+                <h3> n = indices_count_mesh( index ) </h3>
+                <h4> return the number of indices of a mesh </h4>
+            </div>
+            <div class="ind">
+                <h3> attach_vertices_srv_mesh( index, slot ) </h3>
+                <h4> bind the vertex buffer of a mesh as a shader resource view at a given slot </h4>
+            </div>
+            <div class="ind">
+                <h3> attach_indices_srv_mesh( index, slot ) </h3>
+                <h4> bind the index buffer of a mesh as a shader resource view at a given slot </h4>
+            </div> 
+
+            <div class="ind">
+                <h3> use_cube() </h3>
+                <h4> prepare a cube to be drawn in a next stage </h4>
+            </div>
+            <div class="ind">
+                <h3> draw_cube() </h3>
+                <h4> draw a cube </h4>
+            </div>
+            <div class="ind">
+                <h3> draw_instances_cube( instances ) </h3>
+                <h4> draw several copies of a cube </h4>
+            </div>
+
+            <div class="ind">
+                <h3> use_quad() </h3>
+                <h4> prepare a quad to be drawn in a next stage </h4>
+            </div>
+            <div class="ind">
+                <h3> draw_quad() </h3>
+                <h4> draw a quad </h4>
+            </div>
+            <div class="ind">
+                <h3> draw_instances_quad( instances ) </h3>
+                <h4> draw several copies of a quad </h4>
+            </div>
+            <div class="ind">
+                <h3> use_sphere() </h3>
+                <h4> prepare a sphere to be drawn in a next stage </h4>
+            </div>
+            <div class="ind">
+                <h3> draw_sphere() </h3>
+                <h4> draw a sphere </h4>
+            </div>
+            <div class="ind">
+                <h3> draw_instances_sphere( instances ) </h3>
+                <h4> draw several copies of a sphere </h4>
+            </div>
+            <div class="ind">
+                <h3> emit_vertex( count, instances ) </h3>
+                <h4> dispatch several free vertices: count*instances </h4>
+            </div>
+
+        </section>
+
+        <section>
+            <h2>GPU Timer</h2>
+            <div class="ind">
+                <h3> gputimer_begin_profile() </h3>
+                <h4> begin the gpu time profiler </h4>
+            </div>
+            <div class="ind">
+                <h3> gputimer_end_profile() </h3>
+                <h4> end the gpu time profiler </h4>
+            </div>
+            <div class="ind">
+                <h3> gputimer_begin_block( label ) </h3>
+                <h4> begin a profiler block (measure elapsed time until next begin block or end profile) </h4>
+            </div>
+            <div class="ind">
+                <h3> label, time = gputimer_value( index ) </h3>
+                <h4> return name and time for a given profiling block </h4>
+            </div>
+            <div class="ind">
+                <h3> n = gputimer_count( index ) </h3>
+                <h4> return profiling blocks count </h4>
+            </div>
+
+        </section>
 
         <section>
             <h2>Misc</h2>
