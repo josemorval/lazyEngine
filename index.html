@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lua in lazy[E]ngine</title>
+    <style>
+        body {
+            font-family: Verdana;
+            font-weight: lighter;
+            margin: 10px;
+            padding: 10px;
+            background-color: #f4f4f4;
+            font-size: 12px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 1.7em;
+        }
+
+        h2 {
+            color: #0066cc;
+            font-size: 1.5em;
+        }
+
+        h3 {
+            color: #9b2e2e;
+            font-size: 1.0em;
+            font-family: Verdana;
+            font-weight: bold;
+            margin-bottom: -15px;
+        }
+
+        h4 {
+            color: #b32400;
+            font-size: 0.9em;
+            background-color: #e9e9e9;
+            height: auto;
+            font-family: Arial;
+            font-weight: normal;
+            margin-bottom: -5px;
+        }
+
+        pre {
+            background-color: #f9f9f9;
+            padding: 5px;
+            border: 1px solid #ccc;
+            overflow: auto;
+            margin: 0;
+        }
+
+        .code,
+        .example {
+            background-color: #99ddff;
+            padding: 5px;
+            margin: 5px 0;
+        }
+
+        #search-box {
+            margin-bottom: 10px;
+            padding: 5px;
+        }
+
+        .hljs {
+            display: block;
+            overflow-x: auto;
+            padding: 0.2em;
+            color: #333;
+            background: #e6f7ff;
+        }
+
+        .hljs-keyword,
+        .hljs-literal,
+        .hljs-symbol,
+        .hljs-name {
+            color: #0066cc;
+        }
+
+        .hljs-link,
+        .hljs-built_in,
+        .hljs-type {
+            color: #009933;
+        }
+        
+        section-container {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    max-width: 100%;
+    height: 1500px;;
+}
+
+section {
+    width: 500px;
+    height: auto;
+    display: block;
+    margin: 5px;
+}
+        </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+</head>
+<body>
+
+    <h1>    
+        <img src="app.ico"> 
+        Lua in lazy[E]ngine
+    </h1>
+
+    <div id="search-box">
+        <input type="text" id="filter" oninput="filterFunctions()" style="width: 150px; padding: 2px;">
+    </div>
+
+    <!-- Use a container for the sections -->
+    <section-container>
+        <section>
+            <h2>ImGUI</h2>
+            
+            <div class="ind">
+                <h3> imgui_begin( label ) </h3>
+                <h4> start a new window panel </h4>
+            </div>
+
+            <div class="ind">
+                <h3> imgui_end() </h3>
+                <h4> wrap out the window panel content </h4>
+            </div>
+            <div class="ind">
+                <h3> state = imgui_button( label ) </h3>
+                <h4> create a button. return a boolean with the state </h4>
+            </div>
+            <div class="ind">
+                <h3> imgui_text( label ) </h3>
+                <h4> create a text </h4>
+            </div>
+            <div class="ind">
+                <h3> imgui_textwrapped( label ) </h3>
+                <h4> create a text wrapped </h4>
+            </div>
+            <div class="ind">
+                <h3> x = imgui_sliderint( label, _x, min_range, max_range ) </h3>
+                <h4> create a slider int controller. return the new integer value </h4>
+            </div>
+            <div class="ind">
+                <h3> x = imgui_sliderfloat( label, _x, min_range, max_range ) </h3>
+                <h4> create a slider float controller. return the new float value </h4>
+            </div>
+            <div class="ind">
+                <h3> x, y = imgui_sliderfloat2(
+                label, _x, _y, min_range, max_range ) </h3>
+                <h4> create a slider float2 controller. return two new float values </h4>
+            </div>
+            <div class="ind">
+                <h3> x, y, z = imgui_sliderfloat3(  
+                    label, _x, _y, _z, min_range, max_range ) </h3>
+                <h4> create a slider float3 controller. return three new float values </h4>
+            </div>
+            <div class="ind">
+                <h3> x, y, z, w = imgui_sliderfloat4( 
+                    label, _x, _y, _z, _w, min_range, max_range ) </h3>
+                <h4> create a slider float4 controller. return the four new float values </h4>
+            </div>
+
+            <div class="ind">
+                <h3> x = imgui_dragfloat( label, _x, speed, min_range, max_range ) </h3>
+                <h4> create a drag float controller. return the new float value </h4>
+            </div>
+            <div class="ind">
+                <h3> x, y = imgui_dragfloat2( 
+                label, _x, _y, speed, min_range, max_range ) </h3>
+                <h4> create a drag float2 controller. return two new float values </h4>
+            </div>
+            <div class="ind">
+                <h3> x, y, z = imgui_dragfloat3(  
+                    label, _x, _y, _z, speed, min_range, max_range ) </h3>
+                <h4> create a drag float3 controller. return three new float values </h4>
+            </div>
+            <div class="ind">
+                <h3> x, y, z, w = imgui_dragfloat4( 
+                    label, _x, _y, _z, _w, speed, min_range, max_range ) </h3>
+                <h4> create a drag float4 controller. return the four new float values </h4>
+            </div>
+            <div class="ind">
+                <h3> state = imgui_checkbox( label, _state ) </h3>
+                <h4> create a checkbox. return a boolean with the state </h4>
+            </div>
+            <div class="ind">
+                <h3> imgui_sameline( value ) </h3>
+                <h4> force to keep the next element in the same line, with some spacing </h4>
+            </div>
+            <div class="ind">
+                <h3> imgui_newline() </h3>
+                <h4> force a new line for next element </h4>
+            </div>
+            <div class="ind">
+                <h3> imgui_spacing() </h3>
+                <h4> force a new space </h4>
+            </div>
+            <div class="ind">
+                <h3> imgui_progressbar( x, size_x, size_y ) </h3>
+                <h4> create a new progress bar with a specific value </h4>
+            </div>
+            <div class="ind">
+                <h3> state = imgui_treenode( label ) </h3>
+                <h4> create a new tree node. return a boolean with the state </h4>
+            </div>
+            <div class="ind">
+                <h3> imgui_treepop() </h3>
+                <h4> wrap out the current tree </h4>
+            </div>
+            <div class="ind">
+                <h3> imgui_begintable( label, number_columns ) </h3>
+                <h4> create a table with a number of columns. return a boolean with the state </h4>
+            </div>
+            <div class="ind">
+                <h3> imgui_endtable() </h3>
+                <h4> wrap out the current table </h4>
+            </div>
+            <div class="ind">
+                <h3> imgui_tablenextcolumn() </h3>
+                <h4> start a new column in the current table </h4>
+            </div>
+            <div class="ind">
+                <h3> imgui_tableheadersrow() </h3>
+                <h4> set a header row in the current table </h4>
+            </div>
+            <div class="ind">
+                <h3> imgui_tablesetupcolum( label ) </h3>
+                <h4> set a column name for the header in the current table </h4>
+            </div>
+            <div class="ind">
+                <h3> imgui_image_rendertarget2D( render_id, size_x, size_y ) </h3>
+                <h4> create an image of a size using a rendertarget 2d element. point sampler used </h4>
+            </div>
+            <div class="ind">
+                <h3> imgui_image_texture2D( texture_id, size_x, size_y ) </h3>
+                <h4> create an image of a size using a texture 2d element </h4>
+            </div>
+            <div class="ind">
+                <h3> imgui_image_renderdepth2D( depth_id, size_x, size_y ) </h3>
+                <h4> create an image of a size using a texture 2d element </h4>
+            </div>
+            <div class="ind">
+                <h3> state = imgui_iskeypressed( imgui_key ) </h3>
+                <h4> return a boolean telling if a key is currently being pressed </h4>
+            </div>
+            <div class="ind">
+                <h3> x, y = imgui_getmousepos() </h3>
+                <h4> return the mouse position in the window coordinates </h4>
+            </div>
+
+        </section>
+
+        <section>
+            <h2>Render Target 2D</h2>
+            <div class="ind">
+                <h3> index = create_rendertarget2D( size_x, size_y ) </h3>
+                <h4> create a render target 2D of a given size. return the index of the element </h4>
+            </div>
+            <div class="ind">
+                <h3> index = create_empty_rendertarget2D() </h3>
+                <h4> create an empty render target 2D. return the index of the element </h4>
+            </div>
+            <div class="ind">
+                <h3> destroy_rendertarget2D( index ) </h3>
+                <h4> destroy a rendertarget 2D element </h4>
+            </div>
+            <div class="ind">
+                <h3> attach_srv_rendertarget2D( index, slot ) </h3>
+                <h4> bind the element as a shader resource view at a given slot </h4>
+            </div>
+            <div class="ind">
+                <h3> attach_uav_rendertarget2D( index, slot ) </h3>
+                <h4> bind the element as a unordered access view at a given slot </h4>
+            </div>
+            <div class="ind">
+                <h3> set_rendertarget_rendertarget2D( index ) </h3>
+                <h4> set the given render target 2D as the active one to draw on it </h4>
+            </div>
+            <div class="ind">
+                <h3> set_rendertarget_and_depth_rendertarget2D( index, depth_index ) </h3>
+                <h4> set the given render target 2D and render depth 2D as the active ones to draw on it </h4>
+            </div>
+            <div class="ind">
+                <h3> clear_rendertarget_rendertarget2D( index, r, g, b, a ) </h3>
+                <h4> clear the given render target 2D with a given color </h4>
+            </div>
+            <div class="ind">
+                <h3> copy_resource_rendertarget2D( index, source_index ) </h3>
+                <h4> copy the contents of a given source render target 2D to another one </h4>
+            </div>
+        </section>
+
+        <section>
+            <h2>Render Target 3D</h2>
+            <div class="ind">
+                <h3> index = create_rendertarget3D( size_x, size_y, size_z ) </h3>
+                <h4> create a render target 3D of a given size. return the index of the element </h4>
+            </div>
+            <div class="ind">
+                <h3> index = create_empty_rendertarget3D() </h3>
+                <h4> create an empty render target 3D. return the index of the element </h4>
+            </div>
+            <div class="ind">
+                <h3> destroy_rendertarget3D( index ) </h3>
+                <h4> destroy a render target 3D element </h4>
+            </div>
+            <div class="ind">
+                <h3> attach_srv_rendertarget3D( index, slot ) </h3>
+                <h4> bind the element as a shader resource view at a given slot </h4>
+            </div>
+            <div class="ind">
+                <h3> attach_uav_rendertarget3D( index, slot ) </h3>
+                <h4> bind the element as a unordered access view at a given slot </h4>
+            </div>
+            <div class="ind">
+                <h3> clear_rendertarget_rendertarget3D( index, r, g, b, a ) </h3>
+                <h4> clear the given render target 3D with a given color </h4>
+            </div>
+            <div class="ind">
+                <h3> copy_resource_rendertarget3D( index, source_index ) </h3>
+                <h4> copy the contents of a given source render target 3D to another one </h4>
+            </div>
+        </section>
+
+        <section>
+            <h2>Backbuffer</h2>
+            <div class="ind">
+                <h3> set_rendertarget_backbuffer() </h3>
+                <h4> set the backbuffer as the active one to draw on it </h4>
+            </div>
+            <div class="ind">
+                <h3> set_rendertarget_and_depth_backbuffer( depth_index ) </h3>
+                <h4> set the backbuffer and renderdepth 2D as the active ones to draw on it </h4>
+            </div>
+            <div class="ind">
+                <h3> clear_rendertarget_backbuffer( r, g, b, a ) </h3>
+                <h4> clear the backbuffer with a given color </h4>
+            </div>
+        </section>
+
+        <section>
+            <h2>Render Depth 2D</h2>
+            <div class="ind">
+                <h3> index = create_renderdepth2D( size_x, size_y ) </h3>
+                <h4> create a render depth 2D of a given size. return the index of the element </h4>
+            </div>
+            <div class="ind">
+                <h3> destroy_renderdepth2D( index ) </h3>
+                <h4> destroy a render depth 2D element </h4>
+            </div>
+            <div class="ind">
+                <h3> attach_srv_renderdepth2D( index, slot ) </h3>
+                <h4> bind the element as a shader resource view at a given slot </h4>
+            </div>
+            <div class="ind">
+                <h3> clear_depth_renderdepth2D( index ) </h3>
+                <h4> clear the given render depth 2D </h4>
+            </div>
+            <div class="ind">
+                <h3> set_depth_renderdepth2D( index ) </h3>
+                <h4> set the given renderdepth 2D as the active one to draw on it </h4>
+            </div>
+        </section>
+
+        <section>
+            <h2>Buffer</h2>
+            <div class="ind">
+                <h3> index = create_buffer( count, size_per_element, has_cpu_access ) </h3>
+                <h4> create a buffer with a number of elements of given size. return the index of the element </h4>
+            </div>
+            <div class="ind">
+                <h3> destroy_buffer( index ) </h3>
+                <h4> destroy a buffer element </h4>
+            </div>
+            <div class="ind">
+                <h3> attach_srv_buffer( index, slot ) </h3>
+                <h4> bind the element as a shader resource view at a given slot </h4>
+            </div>
+            <div class="ind">
+                <h3> attach_uav_buffer( index, slot ) </h3>
+                <h4> bind the element as a unordered access view at a given slot </h4>
+            </div>
+            <div class="ind">
+                <h3> pointer = get_data_buffer( index ) </h3>
+                <h4> get a native pointer for a buffer element </h4>
+            </div>
+            <div class="ind">
+                <h3> pointer = move_pointer( _pointer, offset ) </h3>
+                <h4> offset a native pointer by a value </h4>
+            </div>
+            <div class="ind">
+                <h3> x = convert_float_pointer( pointer ) </h3>
+                <h4> get a float value at a pointer</h4>
+            </div>
+            <div class="ind">
+                <h3> x = convert_int_pointer( pointer ) </h3>
+                <h4> get an integer value at a pointer</h4>
+            </div>
+            <div class="ind">
+                <h3> x = convert_bool_pointer( pointer ) </h3>
+                <h4> get a boolean value at a pointer</h4>
+            </div>
+        </section>
+        
+        <section>
+            <h2>Constant Buffer</h2>
+            <div class="ind">
+                <h3> index = create_constantbuffer( size ) </h3>
+                <h4> create a constant buffer of a given size. return the index of the element </h4>
+            </div>
+            <div class="ind">
+                <h3> destroy_constantbuffer( index ) </h3>
+                <h4> destroy a constant buffer element </h4>
+            </div>
+            <div class="ind">
+                <h3> attach_constantbuffer( index, slot ) </h3>
+                <h4> bind the element at a given slot </h4>
+            </div>
+            <div class="ind">
+                <h3> update_constantbuffer( index, {slot_index0, slot_value0, ...} ) </h3>
+                <h4> update and submit to gpu the current constant buffer  </h4>
+            </div>
+        </section>
+        
+
+        <section>
+            <h2>Misc</h2>
+
+            <div class="ind">
+                <h3> w, h = get_window_size() </h3>
+                <h4> return width and height of window </h4>
+            </div>
+            <div class="ind">
+                <h3> t = get_time() </h3>
+                <h4> return global time  </h4>
+            </div>
+            <div class="ind">
+                <h3> dt = get_delta_time() </h3>
+                <h4> return delta time </h4>
+            </div>
+            <div class="ind">
+                <h3> set_camera( x, y, z, dir_x, dir_y, dir_z ) </h3>
+                <h4> set view and inverse view matrix </h4>
+            </div>
+            <div class="ind">
+                <h3> set_light_camera( x, y, z, dir_x, dir_y, dir_z ) </h3>
+                <h4> set directional light view and inverse light view matrix </h4>
+            </div>
+            <div class="ind">
+                <h3> set_perspective( fov, aspect_ratio, z_near, z_far ) </h3>
+                <h4> set perspective matrix </h4>
+            </div>
+            <div class="ind">
+                <h3> set_orthographic( width, height, z_near, z_far ) </h3>
+                <h4> set orthographic matrix </h4>
+            </div>
+            <div class="ind">
+                <h3> set_light_perspective( fov, aspect_ratio, z_near, z_far ) </h3>
+                <h4> set light perspective matrix </h4>
+            </div>
+            <div class="ind">
+                <h3> set_light_orthographic( width, height, z_near, z_far ) </h3>
+                <h4> set light orthographic matrix </h4>
+            </div>
+            <div class="ind">
+                <h3> x, y, z, w = transform_point_camera( wx, wy, wz, ww ) </h3>
+                <h4> return a world space location in view space </h4>
+            </div>
+            <div class="ind">
+                <h3> x, y, z, w = inv_transform_point_camera( vx, vy, vz, vw ) </h3>
+                <h4> return a view space location in world space </h4>
+            </div>
+            <div class="ind">
+                <h3> 
+                    set_rendertarget_depth_and_uavs(
+                    use_backbuffer, 
+                        {rtvs_indices}, 
+                        {uavs2d_indices},<br> 
+                    {uavs3d_indices},
+                        depth_index, 
+                        offset_uav
+                    ) 
+                </h3>
+                <h4> set render target, depth buffer and uavs (2D and 3D) for next rendering </h4>
+           </div>
+            <div class="ind">
+                <h3> clean_srv( slot ) </h3>
+                <h4> restore shader resource view slot </h4>
+            </div>
+            <div class="ind">
+                <h3> clean_uav( slot ) </h3>
+                <h4> restore unordered access view slot </h4>
+            </div>
+            <div class="ind">
+                <h3> clean_constantbuffers( slot ) </h3>
+                <h4> restore constant buffer slot </h4>
+            </div>
+            <div class="ind">
+                <h3> clean_constantbuffers( slot ) </h3>
+                <h4> restore constant buffer slot </h4>
+            </div>
+            <div class="ind">
+                <h3> set_translation_transform( index, x, y, z ) </h3>
+                <h4> set position at transform in (constant) transform buffer (max. size 64) </h4>
+            </div>
+            <div class="ind">
+                <h3> set_scale_transform( index, x, y, z ) </h3>
+                <h4> set scale at transform in (constant) transform buffer (max. size 64) </h4>
+            </div>
+            <div class="ind">
+                <h3> set_rotation_transform( index, x, y, z, w ) </h3>
+                <h4> set rotation (axis + angle) at transform in (constant) transform buffer (max. size 64) </h4>
+            </div>
+            <div class="ind">
+                <h3> x, y, z = get_translation_transform( index ) </h3>
+                <h4> return position at transform in (constant) transform buffer (max. size 64) </h4>
+            </div>
+            <div class="ind">
+                <h3> x, y, z = get_scale_transform( index ) </h3>
+                <h4> return scale at transform in (constant) transform buffer (max. size 64) </h4>
+            </div>
+            <div class="ind">
+                <h3> x, y, z, w = get_rotation_transform( index ) </h3>
+                <h4> return rotation (axis + angle) at transform in (constant) transform buffer (max. size 64) </h4>
+            </div>
+            <div class="ind">
+                <h3> x = get_customdata( index, component ) </h3>
+                <h4> get a value from a float4 variable in (constant) custom data buffer (three float4) </h4>
+            </div>
+            <div class="ind">
+                <h3> update_globalconstantbuffer() </h3>
+                <h4> submit to gpu the current global constant buffer values </h4>
+            </div>
+            <div class="ind">
+                <h3> update_transformbuffer() </h3>
+                <h4> submit to gpu the current transform constant buffer values </h4>
+            </div>
+            <div class="ind">
+                <h3> update_customdatabuffer() </h3>
+                <h4> submit to gpu the current custom data constant buffer values </h4>
+            </div>
+            <div class="ind">
+                <h3> load_mesh( path ) </h3>
+                <h4> create a mesh from a source obj file in path </h4>
+            </div>
+            <div class="ind">
+                <h3> load_texture( path ) </h3>
+                <h4> create a texture from a source file in path </h4>
+            </div>
+        </section>
+    </section-container>
+
+    <script>
+        function filterFunctions() {
+            var filter = document.getElementById('filter').value.toLowerCase();
+            var codeBlocks = document.getElementsByClassName('ind');
+
+            for (var i = 0; i < codeBlocks.length; i++) {
+                var functionName = codeBlocks[i].getElementsByTagName('h3')[0].innerText.toLowerCase();
+                var descName = codeBlocks[i].getElementsByTagName('h4')[0].innerText.toLowerCase();
+                
+                if (functionName.includes(filter) || descName.includes(filter)) {
+                    codeBlocks[i].style.display = '';
+                } else {
+                    codeBlocks[i].style.display = 'none';
+                }
+            }
+        }
+    </script>
+
+</body>
+</html>
