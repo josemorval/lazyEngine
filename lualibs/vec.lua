@@ -54,3 +54,7 @@ function vec.mul(a, v)
     end
     return u
 end
+
+function vec.add(u, v)
+    return vec.new(u.x+v.x,u.y+v.y,u.z+v.z,u.w+v.w)
+end

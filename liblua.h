@@ -561,6 +561,13 @@ namespace liblua
         return 2;
     }
     
+    static int imgui_ismousepressed(lua_State* L)
+    {
+        int _key = lua_tonumber(L, 1);
+        bool _pressed = ImGui::IsMouseDown(_key);
+        lua_pushboolean(L, _pressed);
+        return 1;
+    }
 
 #pragma endregion
 #pragma region rendertarget2d bindings
@@ -1394,7 +1401,7 @@ namespace liblua
         float _z = lua_tonumber(L, 3);
         float _w = lua_tonumber(L, 4);
 
-        float4 _result = mul(gcb->inv_view_matrix, float4(_x, _y, _z, _w));
+        float4 _result = mul(float4(_x, _y, _z, _w),gcb->inv_view_matrix);
 
         lua_pushnumber(L, _result.x);
         lua_pushnumber(L, _result.y);

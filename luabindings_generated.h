@@ -63,6 +63,8 @@ list_lua_bindings+="imgui_iskeypressed\n";
 lua_register(lstate, "imgui_iskeypressed", imgui_iskeypressed);
 list_lua_bindings+="imgui_getmousepos\n";
 lua_register(lstate, "imgui_getmousepos", imgui_getmousepos);
+list_lua_bindings+="imgui_ismouseclicked\n";
+lua_register(lstate, "imgui_ismouseclicked", imgui_ismouseclicked);
 list_lua_bindings+="create_rendertarget2D\n";
 lua_register(lstate, "create_rendertarget2D", create_rendertarget2D);
 list_lua_bindings+="create_empty_rendertarget2D\n";

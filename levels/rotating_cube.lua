@@ -11,13 +11,12 @@ function init()
     main_camera = {
         eye = vec.new(0.0,0.0,0.0),
         dir = vec.new(0.0,0.0,0.0),
-        lighteye = vec.new(0.0,1.0,0.0),
+        lighteye = vec.new(0.001,1.0,0.001),
         lightdir = vec.new(0.0,0.0,0.0),
         use = function(self)
-            self.eye = vec.new(-5*math.cos(global_t),2,5*math.sin(global_t))    
+            local q = 0.8+0.5*math.sin(0.2*global_t)
+            self.eye = vec.new(-5*math.cos(q),2,5*math.sin(q))    
             self.dir = vec.mul(-1.0,vec.normalize(self.eye))
-            
-            self.lighteye = vec.new(10.0,10.0,10.0)
             self.lightdir = vec.mul(-1.0,vec.normalize(self.lighteye))
             
             set_camera(self.eye.x,self.eye.y,self.eye.z,self.dir.x,self.dir.y,self.dir.z)
@@ -37,14 +36,30 @@ function init()
     -- create two entities, two cubes. one moving and the other as a ground
     cube = create_cube()
     ground = create_cube()
+
+    -- imgui variables to compute light direction
+    light_angle1=0.5
+    light_angle2=0.5
+    
 end
   
+-- directional light controller
 function imgui() 
-        -- remove/comment if you dont like
-        imgui_setnextwindowsize(300,200)
-        imgui_begin("Information")
-            imgui_textwrapped("This main.lua file is always opened at lazyengine starts. This lua serves as a template for doing things.")
-            imgui_end()
+    imgui_setnextwindowsize(400,80)
+    imgui_begin("Inspector")
+    light_angle1, light_angle2 = imgui_sliderfloat2("Light direction",light_angle1,light_angle2,-2,2)
+    main_camera.lighteye = vec.new(
+        math.cos(light_angle1)*math.sin(light_angle2),
+        math.cos(light_angle2),
+        math.sin(light_angle1)*math.sin(light_angle2)
+    )
+    imgui_end()
+
+    -- remove/comment if you dont like
+    imgui_setnextwindowsize(300,200)
+    imgui_begin("Information")
+        imgui_textwrapped("A scene with a rotating cube.")
+    imgui_end()
 end  
 
 -- main logic loop
@@ -63,11 +78,13 @@ function render_scene()
     clear_depth_renderdepth2D(maindepth_texture)
     set_rendertarget_and_depth_backbuffer(maindepth_texture)
 
+    -- a rotating cube
+    cube.rotation = vec.new(math.sin(global_t),1.0,math.cos(global_t),1.3*global_t)
     cube:draw()    
 
+    -- a ground
     ground.position = vec.new(0.0,-1.0,0.0)
     ground.scale = vec.new(5.0,0.2,5.0)
-    ground.rotation = vec.new(0,1,0,0)
     ground:draw()
 
 end
@@ -83,7 +100,7 @@ end
 function create_cube()
     return {
         position = vec.new(0,0,0),
-        rotation = vec.new(0,0,1,0),
+        rotation = vec.new(0,1,0,1),
         scale = vec.new(1,1,1), 
         draw = function(self)
             use_rasterizer()
@@ -93,7 +110,7 @@ function create_cube()
             set_rotation_transform(0,self.rotation.x,self.rotation.y,self.rotation.z,self.rotation.w)
             set_scale_transform(0,self.scale.x,self.scale.y,self.scale.z)
             update_transformbuffer()
-            draw_cube()
+            draw_instances_cube(1)
         end
     }
 end

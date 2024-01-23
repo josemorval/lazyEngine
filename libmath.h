@@ -203,10 +203,10 @@ float4x4 compute_inv_view_matrix(float3 _position_camera, float3 _view_point) {
 	float cc = -dot(forward, _position_camera);
 
 	float4x4 inv_view_matrix = {
-			right.x,    right.y,    right.z,    _position_camera.x,
-			newUp.x,    newUp.y,    newUp.z,    _position_camera.y,
-			forward.x,    forward.y,    forward.z,    _position_camera.z,
-			0.0f,	0.0f,	0.0f,   1.0f
+			right.x,    right.y,    right.z,    0,
+			newUp.x,    newUp.y,    newUp.z,    0,
+			forward.x,    forward.y,    forward.z,    0,
+			_position_camera.x,	_position_camera.y,	_position_camera.z,   1.0f
 	};
 
 	return inv_view_matrix;

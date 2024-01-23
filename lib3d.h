@@ -1481,7 +1481,7 @@ namespace lib3d
             textureDesc.Height = _height;
             textureDesc.MipLevels = 1;
             textureDesc.ArraySize = 1;
-            textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            textureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
             textureDesc.SampleDesc.Count = 1;
             textureDesc.SampleDesc.Quality = 0;
             textureDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -1622,7 +1622,7 @@ namespace lib3d
             textureDesc.Height = _height;
             textureDesc.Depth = _depth;
             textureDesc.MipLevels = 1;
-            textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // Formato de píxeles
+            textureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
             textureDesc.Usage = D3D11_USAGE_DEFAULT;
             textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
             textureDesc.CPUAccessFlags = 0;

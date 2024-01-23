@@ -119,6 +119,22 @@ void WinMainCRTStartup()
 	{		
 #ifdef _DEBUG
 		lib3d::start_global_timer();
+		
+		if (lib3d::is_focused)
+		{
+			RECT clientRect;
+			GetWindowRect(lib3d::window, &clientRect);
+
+			POINT p;
+			GetCursorPos(&p);
+
+			if (p.x < 5 + clientRect.left) p.x = lib3d::WIDTH - 5 + clientRect.left;
+			if (p.x > lib3d::WIDTH - 5 + clientRect.left) p.x = clientRect.left + 5;
+			if (p.y < 5 + clientRect.top) p.y = lib3d::HEIGHT - 5 + 10 + clientRect.top;
+			if (p.y > lib3d::HEIGHT - 5 + 10 + clientRect.top) p.y = 5 + clientRect.top;
+
+			SetCursorPos(p.x, p.y);
+		}
 #endif
 		MSG msg;
 		while (PeekMessageA(&msg, nullptr, 0, 0, PM_REMOVE))
