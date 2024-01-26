@@ -1752,7 +1752,7 @@ namespace lib3d
             bufferDesc.ByteWidth = _size + 0xf & 0xfffffff0;
 
             device->CreateBuffer(&bufferDesc, nullptr, &buffer);
-            nelements = _size / 16;
+            nelements = _size / 4;
         }
 
         void attach(int _slot)

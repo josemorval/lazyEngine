@@ -1451,25 +1451,50 @@ namespace liblua
 
         int _depth_index = lua_tointeger(L, 5);
         int _offset_uav = lua_tointeger(L, 6);
-        ID3D11DepthStencilView* _dsv = lib3d::renderdepth2D_list[_depth_index]->dsv;
+
+        ID3D11DepthStencilView* _dsv = nullptr;
+        if (_depth_index > -1)
+        {
+            _dsv = lib3d::renderdepth2D_list[_depth_index]->dsv;
+        }
+
         ID3D11RenderTargetView** _rtvs = new ID3D11RenderTargetView*[_num_rtvs];
         {
-            _rtvs[0] = rendertarget_main->rtv;
-            for (int i = 1; i < _num_rtvs; i++)
+
+            if (_use_backbuffer)
             {
-                _rtvs[i] = lib3d::rendertarget2D_list[lua_rawgeti(L, 2, i)]->rtv;
+                _rtvs[0] = rendertarget_main->rtv;
+                for (int i = 1; i < _num_rtvs; i++)
+                {
+                    lua_rawgeti(L, 2, i);
+                    _rtvs[i] = lib3d::rendertarget2D_list[lua_tointeger(L, -1)]->rtv;
+                    lua_pop(L, 1);
+                }
             }
+            else
+            {
+                for (int i = 0; i < _num_rtvs; i++)
+                {
+                    lua_rawgeti(L, 2, i + 1);
+                    _rtvs[i] = lib3d::rendertarget2D_list[lua_tointeger(L, -1)]->rtv;
+                    lua_pop(L, 1);
+                }
+            }  
         }
         ID3D11UnorderedAccessView** _uavs = new ID3D11UnorderedAccessView * [_num_uavs_2d+ _num_uavs_3d];
         {
             for (int i = 0; i < _num_uavs_2d; i++)
             {
-                _uavs[i] = lib3d::rendertarget2D_list[lua_rawgeti(L, 3, i+1)]->uav;
+                lua_rawgeti(L, 3, i + 1);
+                _uavs[i] = lib3d::rendertarget2D_list[lua_tointeger(L, -1)]->uav;
+                lua_pop(L, 1);
             }
 
             for (int i = 0; i < _num_uavs_3d; i++)
             {
-                _uavs[i+ _num_uavs_2d] = lib3d::rendertarget3D_list[lua_rawgeti(L, 4, i + 1)]->uav;
+                lua_rawgeti(L, 4, i + 1);
+                _uavs[i+ _num_uavs_2d] = lib3d::rendertarget3D_list[lua_tointeger(L, -1)]->uav;
+                lua_pop(L, 1);
             }
         }
 
@@ -1550,6 +1575,26 @@ namespace liblua
         tb->rotation_matrix[_id] = compute_rotation_matrix(_angle, float3(_v.x, _v.y, _v.z));
 
         return 0;
+    }
+
+    static int rotate_rotation_transform(lua_State* L)
+    {
+        int _id = lua_tointeger(L, 1);
+        float _vx = lua_tonumber(L, 2);
+        float _vy = lua_tonumber(L, 3);
+        float _vz = lua_tonumber(L, 4);
+        float _angle = lua_tonumber(L, 5);
+
+        float3 _v = normalize(float3(_vx, _vy, _vz));
+        tb->rotation_matrix[_id] = mul(compute_rotation_matrix(_angle, float3(_v.x, _v.y, _v.z)), tb->rotation_matrix[_id]);
+        
+        float4 _u = extract_rotation_info(tb->rotation_matrix[_id]);
+        lua_pushnumber(L, _u.x);
+        lua_pushnumber(L, _u.y);
+        lua_pushnumber(L, _u.z);
+        lua_pushnumber(L, _u.w);
+        
+        return 4;
     }
 
     static int get_rotation_transform(lua_State* L)

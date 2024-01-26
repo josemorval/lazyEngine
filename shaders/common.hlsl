@@ -1,5 +1,3 @@
-#define MAX_PARTICLE_ARRAY_SIZE 50
-
 SamplerState linear_wrap_sampler
 {
     Filter = MIN_MAG_MIP_LINEAR;

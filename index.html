@@ -665,18 +665,18 @@ section {
                 <h4> return a view space location in world space </h4>
             </div>
             <div class="ind">
-                <h3> 
+                <h3>
                     set_rendertarget_depth_and_uavs(
-                    use_backbuffer, 
-                        {rtvs_indices}, 
-                        {uavs2d_indices},<br> 
+                    use_backbuffer,
+                    {rtvs_indices},
+                    {uavs2d_indices},<br>
                     {uavs3d_indices},
-                        depth_index, 
-                        offset_uav
-                    ) 
+                    depth_index,
+                    offset_uav
+                    )
                 </h3>
                 <h4> set render target, depth buffer and uavs (2D and 3D) for next rendering </h4>
-           </div>
+            </div>
             <div class="ind">
                 <h3> clean_srv( slot ) </h3>
                 <h4> restore shader resource view slot </h4>
@@ -684,10 +684,6 @@ section {
             <div class="ind">
                 <h3> clean_uav( slot ) </h3>
                 <h4> restore unordered access view slot </h4>
-            </div>
-            <div class="ind">
-                <h3> clean_constantbuffers( slot ) </h3>
-                <h4> restore constant buffer slot </h4>
             </div>
             <div class="ind">
                 <h3> clean_constantbuffers( slot ) </h3>
@@ -704,6 +700,10 @@ section {
             <div class="ind">
                 <h3> set_rotation_transform( index, x, y, z, w ) </h3>
                 <h4> set rotation (axis + angle) at transform in (constant) transform buffer (max. size 64) </h4>
+            </div>
+            <div class="ind">
+                <h3> x, y, z, w = rotate_rotation_transform( index, x, y, z, w ) </h3>
+                <h4> rotate (axis + angle) a rotation transform in (constant) transform buffer (max. size 64). return resulting rotation (axis + angle) </h4>
             </div>
             <div class="ind">
                 <h3> x, y, z = get_translation_transform( index ) </h3>
@@ -734,12 +734,12 @@ section {
                 <h4> submit to gpu the current custom data constant buffer values </h4>
             </div>
             <div class="ind">
-                <h3> load_mesh( path ) </h3>
-                <h4> create a mesh from a source obj file in path </h4>
+                <h3> index = load_mesh( path ) </h3>
+                <h4> create a mesh from a source obj file in path. return the index of the element </h4>
             </div>
             <div class="ind">
-                <h3> load_texture( path ) </h3>
-                <h4> create a texture from a source file in path </h4>
+                <h3> index = load_texture( path ) </h3>
+                <h4> create a texture from a source file in path. return the index of the element </h4>
             </div>
         </section>
     </section-container>

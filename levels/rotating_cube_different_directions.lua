@@ -11,7 +11,7 @@ function init()
     main_camera = {
         eye = vec.new(0.0,0.0,0.0),
         dir = vec.new(0.0,0.0,0.0),
-        lighteye = vec.new(0.001,1.0,0.001),
+        lighteye = vec.new(1.0,1.0,1.0),
         lightdir = vec.new(0.0,0.0,0.0),
         use = function(self)
             local q = 0.8+0.5*math.sin(0.2*global_t)
@@ -36,23 +36,13 @@ function init()
     -- create two entities, two cubes. one moving and the other as a ground
     cube = create_cube()
     ground = create_cube()
-
-    -- imgui variables to compute light direction
-    light_angle1=0.5
-    light_angle2=0.5
-    
 end
   
--- directional light controller
 function imgui() 
-    imgui_setnextwindowsize(400,80)
-    imgui_begin("Inspector")
-    light_angle1, light_angle2 = imgui_sliderfloat2("Light direction",light_angle1,light_angle2,-2,2)
-    main_camera.lighteye = vec.new(
-        math.cos(light_angle1)*math.sin(light_angle2),
-        math.cos(light_angle2),
-        math.sin(light_angle1)*math.sin(light_angle2)
-    )
+    -- remove/comment if you dont like
+    imgui_setnextwindowsize(300,200)
+    imgui_begin("Information")
+        imgui_textwrapped("A scene with a rotating cube controller by the user. Use A, S and D to switch between different directions")
     imgui_end()
 end  
 
@@ -72,8 +62,19 @@ function render_scene()
     clear_depth_renderdepth2D(maindepth_texture)
     set_rendertarget_and_depth_backbuffer(maindepth_texture)
 
-    -- a rotating cube
-    cube.rotation = vec.new(math.sin(global_t),1.0,math.cos(global_t),1.3*global_t)
+    -- a key
+    if imgui_iskeypressed(546) then
+        cube:update_rotation(1,0,0,0.1)
+    end
+    -- s key
+    if imgui_iskeypressed(564) then
+        cube:update_rotation(0,1,0,0.1)
+    end
+    -- d key
+    if imgui_iskeypressed(549) then
+        cube:update_rotation(0,0,1,0.1)
+    end
+
     cube:draw()    
 
     -- a ground
@@ -96,6 +97,11 @@ function create_cube()
         position = vec.new(0,0,0),
         rotation = vec.new(0,1,0,1),
         scale = vec.new(1,1,1), 
+        update_rotation = function(self,x,y,z,w)
+            set_rotation_transform(0,self.rotation.x,self.rotation.y,self.rotation.z,self.rotation.w)
+            self.rotation.x, self.rotation.y, self.rotation.z, self.rotation.w = rotate_rotation_transform(0,x,y,z,w)
+        end
+        ,
         draw = function(self)
             use_rasterizer()
             use_fx(standard_material)

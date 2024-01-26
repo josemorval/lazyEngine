@@ -212,6 +212,7 @@ void WinMainCRTStartup()
 			//Lua errors
 			if (show_lua_errors_window)
 			{
+				ImGui::SetNextWindowSize(ImVec2(200, 200), ImGuiCond_FirstUseEver);
 				ImGui::Begin("Lua errors");
 				ImGui::TextWrapped(liblua::lua_error_log.c_str());
 				ImGui::TextWrapped(liblua::lua_softerrors_log.c_str());
@@ -221,7 +222,7 @@ void WinMainCRTStartup()
 			//Shader errors
 			if (show_shader_errors_window)
 			{
-
+				ImGui::SetNextWindowSize(ImVec2(200, 200), ImGuiCond_FirstUseEver);
 				ImGui::Begin("Shader errors");
 				for (int i = 0; i < MAX_LIST_SIZE; i++)
 				{
@@ -242,6 +243,7 @@ void WinMainCRTStartup()
 
 			if (show_lua_reference_window)
 			{
+				ImGui::SetNextWindowSize(ImVec2(200, 200), ImGuiCond_FirstUseEver);
 				ImGui::Begin("Lua reference");
 				ImGui::TextWrapped(liblua::list_lua_bindings.c_str());
 				ImGui::End();
