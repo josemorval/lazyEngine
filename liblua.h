@@ -656,6 +656,13 @@ namespace liblua
         return 0;
     }
 
+    static int generate_mips_rendertarget2D(lua_State* L)
+    {
+        int list_index = lua_tointeger(L, 1);
+        lib3d::rendertarget2D_list[list_index]->generate_mipmaps();
+        return 0;
+    }
+
 #pragma endregion
 #pragma region rendertarget3d bindings
 
@@ -725,6 +732,13 @@ namespace liblua
         int _index_source = lua_tointeger(L, 1);
 
         lib3d::rendertarget3D_list[list_index]->copy_resource(*lib3d::rendertarget3D_list[_index_source]);
+        return 0;
+    }
+
+    static int generate_mips_rendertarget3D(lua_State* L)
+    {
+        int list_index = lua_tointeger(L, 1);
+        lib3d::rendertarget3D_list[list_index]->generate_mipmaps();
         return 0;
     }
 
@@ -811,7 +825,7 @@ namespace liblua
     {
         int _size = lua_tointeger(L, 1);
         int _size_per_element = lua_tointeger(L, 2);
-        bool _cpu_access = lua_tointeger(L, 3);
+        bool _cpu_access = lua_toboolean(L, 3);
 
         int list_index = -1;
         lib3d::Buffer* buffer = new lib3d::Buffer(_size, _size_per_element,_cpu_access);

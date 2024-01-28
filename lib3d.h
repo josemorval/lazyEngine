@@ -1479,15 +1479,15 @@ namespace lib3d
             D3D11_TEXTURE2D_DESC textureDesc = {};
             textureDesc.Width = _width;
             textureDesc.Height = _height;
-            textureDesc.MipLevels = 1;
+            textureDesc.MipLevels = 0;
             textureDesc.ArraySize = 1;
-            textureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+            textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
             textureDesc.SampleDesc.Count = 1;
             textureDesc.SampleDesc.Quality = 0;
             textureDesc.Usage = D3D11_USAGE_DEFAULT;
             textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
             textureDesc.CPUAccessFlags = 0;
-            textureDesc.MiscFlags = 0;
+            textureDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
 
             D3D11_SUBRESOURCE_DATA initialData;
@@ -1496,6 +1496,8 @@ namespace lib3d
             initialData.SysMemPitch = 4*_width;
             device->CreateTexture2D(&textureDesc, &initialData, &texture);
             device->CreateShaderResourceView(texture, nullptr, &srv);
+
+            inmediate->GenerateMips(srv);
         }
 
         void attach_srv(int _slot)
@@ -1529,15 +1531,15 @@ namespace lib3d
             D3D11_TEXTURE2D_DESC textureDesc = {};
             textureDesc.Width = _width;
             textureDesc.Height = _height;
-            textureDesc.MipLevels = 1;
+            textureDesc.MipLevels = 0;
             textureDesc.ArraySize = 1;
-            textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // Formato de píxeles
+            textureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT; // Formato de píxeles
             textureDesc.SampleDesc.Count = 1;
             textureDesc.SampleDesc.Quality = 0;
             textureDesc.Usage = D3D11_USAGE_DEFAULT;
             textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
             textureDesc.CPUAccessFlags = 0;
-            textureDesc.MiscFlags = 0;
+            textureDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
 
             device->CreateTexture2D(&textureDesc, nullptr, &rendertarget);
@@ -1605,6 +1607,10 @@ namespace lib3d
             rendertarget = nullptr;
         }
 
+        void generate_mipmaps()
+        {
+            inmediate->GenerateMips(srv);
+        }
     };
     struct RenderTarget3D
     {
@@ -1621,12 +1627,12 @@ namespace lib3d
             textureDesc.Height = _height;
             textureDesc.Height = _height;
             textureDesc.Depth = _depth;
-            textureDesc.MipLevels = 1;
+            textureDesc.MipLevels = 0;
             textureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
             textureDesc.Usage = D3D11_USAGE_DEFAULT;
             textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
             textureDesc.CPUAccessFlags = 0;
-            textureDesc.MiscFlags = 0;
+            textureDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
 
             device->CreateTexture3D(&textureDesc, nullptr, &rendertarget);
@@ -1677,6 +1683,10 @@ namespace lib3d
 
         }
 
+        void generate_mipmaps()
+        {
+            inmediate->GenerateMips(srv);
+        }
     };
     struct Buffer {
 
