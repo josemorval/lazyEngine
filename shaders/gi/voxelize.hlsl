@@ -40,7 +40,7 @@ void gs_main(triangle VS_OUTPUT input[3], inout TriangleStream<PS_INPUT> triStre
         PS_INPUT output;
 
         float angle = 2. * 3.1419 * float(i)/3.0;
-        float2 posxy = 0.7*float2(cos(angle), sin(angle));
+        float2 posxy = 0.9*float2(cos(angle), sin(angle));
 
         output.position = float4(posxy,1.0,1.0);
         output.world_position = input[i].position;

@@ -59,6 +59,11 @@ lib3d::Mesh* mesh_sphere;
 lib3d::ConstantBuffer* constantbuffer_main;
 lib3d::ConstantBuffer* transformbuffer_main;
 lib3d::ConstantBuffer* customdatabuffer_main;
+lib3d::SamplerState* linearwrap;
+lib3d::SamplerState* pointwrap;
+lib3d::SamplerState* linearclamp;
+lib3d::SamplerState* pointclamp;
+
 
 #ifdef _DEBUG
 lib3d::GPUTimer* gpu_timer;

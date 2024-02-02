@@ -1,34 +1,7 @@
-SamplerState linear_wrap_sampler
-{
-    Filter = MIN_MAG_MIP_LINEAR;
-    AddressU = WRAP;
-    AddressV = WRAP;
-    AddressW = WRAP;
-};
-
-SamplerState point_wrap_sampler
-{
-    Filter = MIN_MAG_MIP_POINT;
-    AddressU = WRAP;
-    AddressV = WRAP;
-    AddressW = WRAP;
-};
-
-SamplerState linear_clamp_sampler
-{
-    Filter = MIN_MAG_MIP_LINEAR;
-    AddressU = CLAMP;
-    AddressV = CLAMP;
-    AddressW = CLAMP;
-};
-
-SamplerState point_clamp_sampler
-{
-    Filter = MIN_MAG_MIP_POINT;
-    AddressU = CLAMP;
-    AddressV = CLAMP;
-    AddressW = CLAMP;
-};
+SamplerState linear_wrap_sampler    : register(s0);
+SamplerState point_wrap_sampler     : register(s1);
+SamplerState linear_clamp_sampler   : register(s2);
+SamplerState point_clamp_sampler    : register(s3);
 
 cbuffer constants : register(b0)
 {

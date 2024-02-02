@@ -40,6 +40,17 @@ void WinMainCRTStartup()
 	allocation(rasterizer_nocull, lib3d::Rasterizer, D3D11_FILL_SOLID, D3D11_CULL_NONE);
 	allocation(rasterizer_wireframe, lib3d::Rasterizer, D3D11_FILL_WIREFRAME, D3D11_CULL_NONE);
 
+	//Create samplers and set
+	allocation(linearwrap, lib3d::SamplerState, D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_WRAP);
+	allocation(pointwrap, lib3d::SamplerState, D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_TEXTURE_ADDRESS_WRAP);
+	allocation(linearclamp, lib3d::SamplerState, D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_CLAMP);
+	allocation(pointclamp, lib3d::SamplerState, D3D11_FILTER_MIN_MAG_MIP_POINT, D3D11_TEXTURE_ADDRESS_CLAMP);
+
+	linearwrap->set_sampler(0);
+	pointwrap->set_sampler(1);
+	linearclamp->set_sampler(2);
+	pointclamp->set_sampler(3);
+
 	//Create a alpha blending mode 
 	allocation(alpha_blending, lib3d::AlphaBlending);
 
@@ -60,7 +71,7 @@ void WinMainCRTStartup()
 #endif //  _DEBUG
 
 #ifdef _DEBUG
-	//allocation(gpu_timer, lib3d::GPUTimer);
+	allocation(gpu_timer, lib3d::GPUTimer);
 #endif // DEBUG
 	//Constant buffer for store view and projection matrices and other thins
 	allocation(constantbuffer_main, lib3d::ConstantBuffer, sizeof(GlobalConstantsBuffer));

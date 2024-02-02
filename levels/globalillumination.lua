@@ -1,4 +1,5 @@
 require("lualibs.vec")
+require("lualibs.assets")
 
 function init()
 
@@ -13,13 +14,12 @@ function init()
 
     -- first person camera controller
     main_camera = {
-        eye = vec.new(-5.0,2.0,5.0),
-        dir = vec.mul(-1.0,vec.normalize(vec.new(-5.0,2.0,5.0))),
+        eye = vec.new(2.5,2.0,0.5),
+        dir = vec.new(-0.9,-0.45,-0.21),
         lighteye = vec.new(0.001,1.0,0.001),
         lightdir = vec.new(0.0,0.0,0.0),
         
-        update = function(self)
-            
+        update = function(self) 
             if imgui_ismousepressed(1) then
                 local right = transform_view_to_world(1,0,0,0)
                 local up = transform_view_to_world(0,1,0,0)
@@ -56,62 +56,69 @@ function init()
         end,
 
         use = function(self)
-            self.lighteye = vec.new(3.0,5.0,2.0)
+            self.lighteye = vec.mul(1.0,vec.mul(1.3,vec.new(2.0,2.0,1.0)))
             self.lightdir = vec.mul(-1.0,vec.normalize(self.lighteye))
             
             set_camera(self.eye.x,self.eye.y,self.eye.z,self.dir.x,self.dir.y,self.dir.z)
             set_perspective(1.0,screenx/screeny,0.1,50.0)   
             set_light_camera(self.lighteye.x,self.lighteye.y,self.lighteye.z,self.lightdir.x,self.lightdir.y,self.lightdir.z)
-            set_light_orthographic(10.0*screenx/screeny,10.0,0.1,50.0)   
+            set_light_orthographic(8.0*screenx/screeny,8.0,0.1,50.0)   
             update_globalconstantbuffer()
         end
     }
 
+    -- create backbuffer texture
+    backbuffer = assets.backbuffer()
+    
     -- create depth texture
-    maindepth_texture = create_renderdepth2D(screenx,screeny)
+    maindepth = assets.renderdepth2D(screenx,screeny)
     
     -- create shadow map
-    shadowmap_texture = create_renderdepth2D(screenx,screeny)
+    shadowmap = assets.renderdepth2D(screenx,screeny)
 
     -- create voxel render target
-    number_voxels = 512
-    voxel_texture = create_rendertarget3D(number_voxels,number_voxels,number_voxels)
+    number_voxels = 64
+    voxel_texture =  assets.rendertarget3D(number_voxels,number_voxels,number_voxels)
     
     -- camera for voxelization
     voxel_camera = {
-        eye = vec.new(0.0,0.0,20.0),
+        eye = vec.new(0.0,0.0,10.0),
         dir = vec.new(0.0,0.0,-1.0),
+        size = 5,
         use = function(self)            
             set_camera(self.eye.x,self.eye.y,self.eye.z,self.dir.x,self.dir.y,self.dir.z)
-            set_orthographic(20,20,0.1,100.0)   
+            set_orthographic(self.size,self.size,0.1,100.0)   
             update_globalconstantbuffer()
         end
     }
 
     -- standard (+ shadowmap) material
-    standard_material = create_fx("./shaders/gi/standard.hlsl", false)
-    standard_shadow_material = create_fx("./shaders/gi/standard_shadow.hlsl", false)
+    standard_material = assets.fx("./shaders/gi/standard.hlsl", false)
+    standard_shadow_material = assets.fx("./shaders/gi/standard_shadow.hlsl", false)
     -- voxelizer + voxel viewer material
-    voxelize_material = create_fx("./shaders/gi/voxelize.hlsl", true)
-    voxelviewer_material = create_fx("./shaders/gi/voxelviewer.hlsl", false)
+    voxelize_material = assets.fx("./shaders/gi/voxelize.hlsl", true)
+    voxelviewer_material = assets.fx("./shaders/gi/voxelviewer.hlsl", false)
     
     -- voxel constant buffer
-    voxel_constant_buffer = create_constantbuffer( 16*2 )
-    update_constantbuffer(
-        voxel_constant_buffer,
-        3, 10.0, 4, number_voxels
-    )
-    attach_constantbuffer(voxel_constant_buffer,3)
+    voxel_constant_buffer = assets.constantbuffer( 16*2 )
+    voxel_constant_buffer:update(3,2.0*voxel_camera.size, 4, number_voxels)
+    voxel_constant_buffer:bind(3)
+
+    -- pig model
+    sponza_model = create_mesh("./models/sponza.obj")
 
     -- create two cube entities. defined below
     cube = create_cube()
-    ground = create_cube()
-
+    sphere = create_sphere()
+    
 
 end
   
 function imgui() 
-
+    imgui_begin("Inspector")
+    imgui_text(string.format("%.2f %.2f %.2f",main_camera.eye.x,main_camera.eye.y,main_camera.eye.z))
+    imgui_text(string.format("%.2f %.2f %.2f",main_camera.dir.x,main_camera.dir.y,main_camera.dir.z))
+    imgui_end()
 end  
 
 -- main logic loop
@@ -131,10 +138,10 @@ function render()
     use_rasterizer()
     use_write_depthstencil()
 
-    clear_depth_renderdepth2D(shadowmap_texture)
-    set_depth_renderdepth2D(shadowmap_texture)
+    shadowmap:clear()
+    shadowmap:use()
 
-    use_fx(standard_shadow_material)
+    standard_shadow_material:use()
     render_scene() 
     
     -----------------------
@@ -147,14 +154,15 @@ function render()
     clear_depthstencil()
 
     --voxelize scene
-    clear_rendertarget_rendertarget3D(voxel_texture,0.0,0.0,0.0,0.0)
-    set_rendertarget_depth_and_uavs(false,{},{},{voxel_texture},-1,1)
+    voxel_texture:clear(0.0,0.0,0.0,0.0)
+    set_rendertarget_depth_and_uavs(false,{},{},{voxel_texture:get()},-1,1)
 
-    use_fx(voxelize_material)
-    attach_srv_renderdepth2D(shadowmap_texture,0)
+    voxelize_material:use()
+    shadowmap:read(0)
     render_scene() 
-    clean_srv(0)
+    shadowmap:unread()
 
+    --generate_mips_rendertarget3D(voxel_texture)
     -----------------------
     -- voxelization viewer
     -----------------------
@@ -163,56 +171,74 @@ function render()
     use_viewport(0,0,screenx,screeny)
     use_write_depthstencil()
     
-    -- ping-pong between normal/wireframe viz
-    e,f = math.modf(0.2*global_t,1.0)
-    if f > 0.5 then
-        use_rasterizer()
-    else
-        use_wireframe_rasterizer()
-    end
-    
     -- sky color
-    clear_rendertarget_backbuffer(0.4,0.7,1.0,1.0)
-    clear_depth_renderdepth2D(maindepth_texture)
-    set_rendertarget_and_depth_backbuffer(maindepth_texture)
+    backbuffer:clear(0.4,0.7,1.0,1.0)
+    maindepth:clear()
+    backbuffer:use(maindepth)
 
-    use_fx(voxelviewer_material)
-    attach_srv_rendertarget3D(voxel_texture,1)
-    use_cube()
-    --draw_instances_cube(number_voxels * number_voxels * number_voxels)
-    clean_srv(1)
+    local debug = true
 
+    if debug then
+        voxelviewer_material:use()
+        voxel_texture:read(1)
+        use_cube()
+        draw_instances_cube(number_voxels*number_voxels*number_voxels)
+        voxel_texture:unread()
+    end
+
+    -----------------------
+    -- gi render
+    -----------------------
     
+    if not debug then        
+        use_viewport(0,0,screenx,screeny)
+        use_write_depthstencil()
+
+        standard_material:use()
+        shadowmap:read(0)
+        voxel_texture:read(1)
+        render_scene() 
+        shadowmap:unread()
+        voxel_texture:unread()
+    end
 end
 
 -- as simple scene
 function render_scene()    
     
-    cube.rotation = vec.new(math.sin(global_t),math.cos(global_t),math.sin(global_t),0.5)
-    cube.scale = vec.new(2.0,2.0,2.0)
-    cube.position = vec.new(-2.0,0.0,0.0)
-    cube:draw()    
+    --sponza_model.position = vec.new(0.0,0.0,0.0)
+    --sponza_model.scale = vec.new(0.002,0.002,0.002)
+    --sponza_model:draw()
 
+    cube.position = vec.new(0.0,0.0,0.0)
+    cube.scale = vec.new(2.0,0.1,2.0)
+    cube.rotation = vec.new(0.0,1.0,0.0,0.0)
+    cube:draw()
 
-    cube.rotation = vec.new(math.sin(global_t+1.0),math.cos(global_t+1.0),math.sin(global_t+1.0),0.5)
-    cube.scale = vec.new(1.0,1.0,1.0)
-    cube.position = vec.new(1.0,0.0,2.0)
-    cube:draw()  
+    cube.position = vec.new(0.0,2.0,0.0)
+    cube.scale = vec.new(2.0,0.1,2.0)
+    cube.rotation = vec.new(0.0,1.0,0.0,0.0)
+    cube:draw()
 
-    cube.rotation = vec.new(math.sin(global_t+1.0),math.cos(global_t+1.0),math.sin(global_t+1.0),0.5)
-    cube.scale = vec.new(-1.0,1.0,1.0)
-    cube.position = vec.new(1.0,0.0,2.0)
-    cube:draw()  
+    cube.position = vec.new(0.0,1.0,-1.0)
+    cube.scale = vec.new(2.0,0.1,2.0)
+    cube.rotation = vec.new(1.0,0.0,0.0,1.57)
+    cube:draw()
 
-    
-    cube.rotation = vec.new(math.sin(global_t+1.0),math.cos(global_t+1.0),math.sin(global_t+1.0),0.5)
-    cube.scale = vec.new(-1.0,1.0,1.0)
-    cube.position = vec.new(1.0,0.3,-1.0)
-    cube:draw()  
+    cube.position = vec.new(0.0,1.0,1.0)
+    cube.scale = vec.new(2.0,0.1,2.0)
+    cube.rotation = vec.new(1.0,0.0,0.0,1.57)
+    cube:draw()
 
-    ground.position = vec.new(0.0,-1.0,0.0)
-    ground.scale = vec.new(5.0,0.2,5.0)
-    ground:draw()
+    cube.position = vec.new(-1.0,1.0,0.0)
+    cube.scale = vec.new(2.0,0.1,2.0)
+    cube.rotation = vec.new(0.0,0.0,1.0,1.57)
+    cube:draw()
+
+    sphere.position = vec.new(0.0,0.0,0.0)
+    sphere.scale = vec.new(1.0,1.0,1.0)
+    sphere.rotation = vec.new(0.0,1.0,0.0,0.0)
+    sphere:draw()
 
 end
 
@@ -236,6 +262,39 @@ function create_cube()
             set_scale_transform(0,self.scale.x,self.scale.y,self.scale.z)
             update_transformbuffer()
             draw_instances_cube(1)
+        end
+    }
+end
+
+function create_sphere()
+    return {
+        position = vec.new(0,0,0),
+        rotation = vec.new(0,1,0,0),
+        scale = vec.new(1,1,1), 
+        draw = function(self)
+            use_sphere()
+            set_translation_transform(0,self.position.x,self.position.y,self.position.z)
+            set_rotation_transform(0,self.rotation.x,self.rotation.y,self.rotation.z,self.rotation.w)
+            set_scale_transform(0,self.scale.x,self.scale.y,self.scale.z)
+            update_transformbuffer()
+            draw_instances_sphere(1)
+        end
+    }
+end
+
+function create_mesh(path)
+    return {
+        position = vec.new(0,0,0),
+        rotation = vec.new(0,1,0,0),
+        scale = vec.new(1.0,1.0,1.0), 
+        mesh_index = load_mesh(path),
+        draw = function(self)
+            use_mesh(self.mesh_index)
+            set_translation_transform(0,self.position.x,self.position.y,self.position.z)
+            set_rotation_transform(0,self.rotation.x,self.rotation.y,self.rotation.z,self.rotation.w)
+            set_scale_transform(0,self.scale.x,self.scale.y,self.scale.z)
+            update_transformbuffer()
+            draw_instances_mesh(self.mesh_index,1)
         end
     }
 end

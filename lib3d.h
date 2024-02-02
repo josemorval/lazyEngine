@@ -31,6 +31,7 @@ namespace lib3d
     struct AlphaBlending;
     struct DepthStencil;
     struct Mesh;
+    struct SamplerState;
 
     //Device main variables
     HWND  window;
@@ -1416,7 +1417,7 @@ namespace lib3d
             D3D11_TEXTURE2D_DESC depthDesc = {};
             depthDesc.Width = _width;
             depthDesc.Height = _height;
-            depthDesc.MipLevels = 1;
+            depthDesc.MipLevels = 0;
             depthDesc.ArraySize = 1;
             depthDesc.Format = DXGI_FORMAT_R32_TYPELESS;
             depthDesc.SampleDesc.Count = 1;
@@ -1465,12 +1466,13 @@ namespace lib3d
             rendertarget->Release();
             rendertarget = nullptr;
         }
+
     };
 
     struct Texture2D
     {
-        ID3D11Texture2D* texture;
-        ID3D11ShaderResourceView* srv;
+        ID3D11Texture2D* texture = nullptr;
+        ID3D11ShaderResourceView* srv = nullptr;
 
         Texture2D() : texture(nullptr), srv(nullptr) {}
 
@@ -1515,6 +1517,12 @@ namespace lib3d
             texture->Release();
             texture = nullptr;
         }
+
+        void generate_mipmaps()
+        {
+            inmediate->GenerateMips(srv);
+        }
+
     };
 
     struct RenderTarget2D
@@ -1694,31 +1702,64 @@ namespace lib3d
         ID3D11UnorderedAccessView* uav;
         ID3D11ShaderResourceView* srv;
 
-        Buffer(int _size, int _size_per_element, bool _cpu_read_access = false)
+        Buffer(int _size, int _size_per_element, bool _cpu_read_access = false, bool _indirect_buffer = false)
         {
-            D3D11_BUFFER_DESC bufferDesc = {};
-            bufferDesc.Usage = D3D11_USAGE_DEFAULT;
-            bufferDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+
+            if (_indirect_buffer)
+            {
+
+                D3D11_BUFFER_DESC bufferDesc = {};
+                bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+                bufferDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+                bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS | D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
+                bufferDesc.ByteWidth = _size_per_element * _size;
+                bufferDesc.StructureByteStride = 0;
+                bufferDesc.CPUAccessFlags = 0;
+                device->CreateBuffer(&bufferDesc, nullptr, &buffer);
+
+
+                D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+                uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+                uavDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+                uavDesc.Buffer.NumElements = _size;
+                uavDesc.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_RAW;
+                device->CreateUnorderedAccessView(buffer, &uavDesc, &uav);
+
+                D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+                srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+                srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
+                srvDesc.BufferEx.FirstElement = 0;
+                srvDesc.BufferEx.NumElements = _size;
+                srvDesc.BufferEx.Flags = D3D11_BUFFEREX_SRV_FLAG_RAW;
+                device->CreateShaderResourceView(buffer, &srvDesc, &srv);
+            }
+            else
+            {
+                D3D11_BUFFER_DESC bufferDesc = {};
+                bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+                bufferDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+
+                if (_cpu_read_access) bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+                bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+                bufferDesc.ByteWidth = _size_per_element * _size;
+                bufferDesc.StructureByteStride = _size_per_element;
+
+                device->CreateBuffer(&bufferDesc, nullptr, &buffer);
+
+                D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+                uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+                uavDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+                uavDesc.Buffer.NumElements = _size;
+                device->CreateUnorderedAccessView(buffer, &uavDesc, &uav);
+
+                D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+                srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+                srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+                srvDesc.Buffer.NumElements = _size;
+                device->CreateShaderResourceView(buffer, &srvDesc, &srv);
+            }
             
-            if(_cpu_read_access) bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-
-            bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-            bufferDesc.ByteWidth = _size_per_element*_size;
-            bufferDesc.StructureByteStride = _size_per_element;
-
-            device->CreateBuffer(&bufferDesc, nullptr, &buffer);
-
-            D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-            uavDesc.Format = DXGI_FORMAT_UNKNOWN;
-            uavDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
-            uavDesc.Buffer.NumElements = _size;
-            device->CreateUnorderedAccessView(buffer, &uavDesc, &uav);
-
-            D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-            srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-            srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
-            srvDesc.Buffer.NumElements = _size;
-            device->CreateShaderResourceView(buffer, &srvDesc, &srv);
         }
 
         void attach_srv(int _slot)
@@ -2013,7 +2054,7 @@ namespace lib3d
             hr = D3DCompileFromFile(filename, 0, ((ID3DInclude*)(UINT_PTR)1), cs_id, "cs_5_0", 0, 0, &blob, &error_blob);
             
 #if _DEBUG
-            if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) || hr == HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND)) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) || hr == HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND)) {
                 error_compute_shader += "Shader file not found: ";
                 error_compute_shader += filename_char;
                 error_compute_shader += "\n";
@@ -2057,6 +2098,10 @@ namespace lib3d
 
         void dispatch(int _threadx, int _thready, int _threadz) {
             inmediate->Dispatch(_threadx, _thready, _threadz);
+        }
+
+        void dispatch_indirect(Buffer* b) {
+            inmediate->DispatchIndirect(b->buffer, 0);
         }
 
         void release()
@@ -2211,7 +2256,8 @@ namespace lib3d
             vertexSRVDesc.Format = DXGI_FORMAT_R32_FLOAT; // Ajusta el formato según tus necesidades
             vertexSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
             vertexSRVDesc.Buffer.ElementOffset = 0;
-            vertexSRVDesc.Buffer.ElementWidth = sizeof(_vertices_size) / sizeof(float);
+            vertexSRVDesc.Buffer.ElementWidth = _vertices_size / sizeof(float);
+
             device->CreateShaderResourceView(vertex_buffer, &vertexSRVDesc, &vertex_srv);
 
             // Crear SRV para el búfer de índices
@@ -2305,8 +2351,8 @@ namespace lib3d
         {
             for (int i = 0; i < max_query_points; i++)
             {
-                blockTimes.push_back(0.0f);
-                blockNames.push_back("");
+                blockTimes[i] = 0.0f;
+                blockNames[i] = "";
             }
 
             numQueryPoints = 0;
@@ -2355,6 +2401,30 @@ namespace lib3d
 
     };
 #endif
+
+    struct SamplerState
+    {
+        ID3D11SamplerState* sampler_state = nullptr;
+
+        SamplerState(D3D11_FILTER _filter, D3D11_TEXTURE_ADDRESS_MODE _adress)
+        {
+            D3D11_SAMPLER_DESC sampDesc;
+            sampDesc.Filter = _filter;
+            sampDesc.AddressU = _adress;
+            sampDesc.AddressV = _adress;
+            sampDesc.AddressW = _adress;
+            sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+            sampDesc.MinLOD = 0;
+            sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+            device->CreateSamplerState(&sampDesc, &sampler_state);
+        }
+
+        void set_sampler(int _slot)
+        {
+            inmediate->PSSetSamplers(_slot, 1, &sampler_state);
+        }
+    };
 
     void setup_device(HINSTANCE handle_instance)
         {
@@ -2489,6 +2559,15 @@ namespace lib3d
         inmediate->IASetIndexBuffer(0, DXGI_FORMAT_R32_UINT, 0);
         inmediate->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
         inmediate->DrawInstanced(_vertexcount, _instancecount, 0, 0);
+    }
+
+    void emit_vertex_indirect(Buffer* b)
+    {
+        inmediate->IASetInputLayout(nullptr);
+        inmediate->IASetVertexBuffers(0, 0, nullptr, 0, 0);
+        inmediate->IASetIndexBuffer(0, DXGI_FORMAT_R32_UINT, 0);
+        inmediate->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+        inmediate->DrawInstancedIndirect(b->buffer,0);
     }
 
     void set_renders_and_uavs(ID3D11RenderTargetView* rtvs[], int numrtvs, ID3D11DepthStencilView* dsv, ID3D11UnorderedAccessView* uavs[], int offsetuavs, int numuavs)

@@ -569,6 +569,26 @@ namespace liblua
         return 1;
     }
 
+    static int imgui_copytoclipboard(lua_State* L)
+    {
+        const char* label = lua_tostring(L, 1);
+        OpenClipboard(nullptr);
+        EmptyClipboard();
+        size_t len = strlen(label) + 1;
+
+        HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, len);
+        if (hMem != nullptr) {
+            char* memData = static_cast<char*>(GlobalLock(hMem));
+            if (memData != nullptr) {
+                strcpy_s(memData, len, label);
+                GlobalUnlock(hMem);
+                SetClipboardData(CF_TEXT, hMem);
+            }
+        }
+        CloseClipboard();
+        return 0;
+    }
+
 #pragma endregion
 #pragma region rendertarget2d bindings
 
@@ -817,7 +837,7 @@ namespace liblua
         lib3d::renderdepth2D_list[list_index]->set_depth();
         return 0;
     }
-
+    
 #pragma endregion
 #pragma region buffer bindings
 
@@ -833,6 +853,18 @@ namespace liblua
         lua_pushinteger(L, list_index);
         return 1;
     }
+    static int create_buffer_indirect(lua_State* L)
+    {
+        int _size = lua_tointeger(L, 1);
+        int _size_per_element = lua_tointeger(L, 2);
+
+        int list_index = -1;
+        lib3d::Buffer* buffer = new lib3d::Buffer(_size, _size_per_element, false, true);
+        add_to_list(lib3d::buffer_list, buffer);
+        lua_pushinteger(L, list_index);
+        return 1;
+    }
+
 
     static int destroy_buffer(lua_State* L)
     {
@@ -1043,6 +1075,64 @@ namespace liblua
         return 0;
     }
 
+    static int dispatch_indirect_computefx(lua_State* L)
+    {
+        int list_index = lua_tointeger(L, 1);
+        lib3d::computefx_list[list_index]->dispatch_indirect(lib3d::buffer_list[list_index]);
+        return 0;
+    }
+
+
+#pragma endregion
+#pragma region texture2d bindings
+
+    static int load_texture2D(lua_State* L)
+    {
+        const char* _label = lua_tostring(L, 1);
+
+        int channels;
+        int width;
+        int height;
+
+        stbi_uc* imageData = stbi_load(_label, &width, &height, &channels, STBI_rgb_alpha);
+
+        if (_label == "" || imageData == nullptr)
+        {
+            lua_pushinteger(L, -1);
+            return 1;
+        }
+
+        int list_index = -1;
+        lib3d::Texture2D* texture2d = new lib3d::Texture2D(width, height, imageData);
+        add_to_list(lib3d::texture2D_list, texture2d);
+
+        lua_pushinteger(L, list_index);
+        return 1;
+    }
+    static int destroy_texture2D(lua_State* L)
+    {
+        int _list_index = lua_tointeger(L, 1);
+        if (lib3d::texture2D_list[_list_index] != nullptr)
+        {
+            lib3d::texture2D_list[_list_index]->release();
+            lib3d::texture2D_list[_list_index] = nullptr;
+        }
+        return 0;
+    }
+    static int attach_srv_texture2D(lua_State* L)
+    {
+        int list_index = lua_tointeger(L, 1);
+        int _slot = lua_tointeger(L, 2);
+        lib3d::texture2D_list[list_index]->attach_srv(_slot);
+        return 0;
+    }
+    static int generate_mips_texture2D(lua_State* L)
+    {
+        int list_index = lua_tointeger(L, 1);
+        lib3d::texture2D_list[list_index]->generate_mipmaps();
+        return 0;
+    }
+
 #pragma endregion
 #pragma region viewport bindings
 
@@ -1116,6 +1206,50 @@ namespace liblua
 
 #pragma endregion
 #pragma region mesh bindings
+
+    static int load_mesh(lua_State* L)
+    {
+        const char* _label = lua_tostring(L, 1);
+
+        if (_label == "")
+        {
+            lua_pushinteger(L, -1);
+            return 1;
+        }
+
+        fastObjMesh* m = fast_obj_read(_label);
+
+        int list_index = -1;
+        if (m != nullptr)
+        {
+            float* vert_array = new float[m->index_count * 8];
+            int* ind_array = new int[m->index_count];
+
+            for (int i = 0; i < m->index_count; i++)
+            {
+                vert_array[8 * i + 0] = m->positions[3 * m->indices[i].p + 0];
+                vert_array[8 * i + 1] = m->positions[3 * m->indices[i].p + 1];
+                vert_array[8 * i + 2] = m->positions[3 * m->indices[i].p + 2];
+
+                vert_array[8 * i + 3] = m->texcoords[2 * m->indices[i].t + 0];
+                vert_array[8 * i + 4] = m->texcoords[2 * m->indices[i].t + 1];
+
+                vert_array[8 * i + 5] = m->normals[3 * m->indices[i].n + 0];
+                vert_array[8 * i + 6] = m->normals[3 * m->indices[i].n + 1];
+                vert_array[8 * i + 7] = m->normals[3 * m->indices[i].n + 2];
+
+                ind_array[i] = i;
+            }
+
+
+            list_index = -1;
+            lib3d::Mesh* mesh = new lib3d::Mesh(vert_array, ind_array, (int)m->index_count * 8 * sizeof(float), (int)m->index_count * sizeof(int));
+            add_to_list(lib3d::mesh_list, mesh);
+        }
+
+        lua_pushinteger(L, list_index);
+        return 1;
+    }
 
     static int use_mesh(lua_State* L)
     {
@@ -1258,6 +1392,13 @@ namespace liblua
         int _instancecount = lua_tointeger(L, 2);
 
         lib3d::emit_vertex(_count, _instancecount);
+        return 0;
+    }
+
+    static int emit_vertex_indirect(lua_State* L)
+    {
+        int list_index = lua_tointeger(L, 1);
+        lib3d::emit_vertex_indirect(lib3d::buffer_list[list_index]);
         return 0;
     }
 
@@ -1729,75 +1870,6 @@ namespace liblua
         customdatabuffer_main->unmap();
         return 0;
     }
-
-    static int load_mesh(lua_State* L)
-    {
-        const char* _label = lua_tostring(L, 1);
-
-        if (_label == "")
-        {
-            lua_pushinteger(L, -1);
-            return 1;
-        }
-
-        fastObjMesh* m = fast_obj_read(_label);
-        
-        int list_index = -1;
-        if (m != nullptr)
-        {
-            float* vert_array = new float[m->index_count * 8];
-            int* ind_array = new int[m->index_count];
-
-            for (int i = 0; i < m->index_count; i++)
-            {
-                vert_array[8 * i + 0] = m->positions[3 * m->indices[i].p + 0];
-                vert_array[8 * i + 1] = m->positions[3 * m->indices[i].p + 1];
-                vert_array[8 * i + 2] = m->positions[3 * m->indices[i].p + 2];
-
-                vert_array[8 * i + 3] = m->texcoords[2 * m->indices[i].t + 0];
-                vert_array[8 * i + 4] = m->texcoords[2 * m->indices[i].t + 1];
-
-                vert_array[8 * i + 5] = m->normals[3 * m->indices[i].n + 0];
-                vert_array[8 * i + 6] = m->normals[3 * m->indices[i].n + 1];
-                vert_array[8 * i + 7] = m->normals[3 * m->indices[i].n + 2];
-
-                ind_array[i] = i;
-            }
-
-
-            list_index = -1;
-            lib3d::Mesh* mesh = new lib3d::Mesh(vert_array, ind_array, (int)m->index_count * 8 * sizeof(float), (int)m->index_count * sizeof(int));
-            add_to_list(lib3d::mesh_list, mesh);
-        }
-        
-        lua_pushinteger(L, list_index);
-        return 1;
-    }
-
-    static int load_texture(lua_State* L)
-    {
-        const char* _label = lua_tostring(L, 1);
-
-        int channels;
-        int width;
-        int height;
-
-        stbi_uc* imageData = stbi_load(_label, &width, &height, &channels, STBI_rgb_alpha);
-
-        if (_label == "" || imageData==nullptr)
-        {
-            lua_pushinteger(L, -1);
-            return 1;
-        }
-
-        int list_index = -1;
-        lib3d:: Texture2D* texture2d = new lib3d::Texture2D(width, height, imageData);
-        add_to_list(lib3d::texture2D_list, texture2d);
-
-        lua_pushinteger(L, list_index);
-        return 1;
-    }
-
 
 #pragma endregion
 
